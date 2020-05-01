@@ -1,5 +1,6 @@
 .venv/*
 .env/*
+models/*
 *.tiff
 *.png
 *.jpg
@@ -7,3 +8,4 @@
 *.vscode
 *.pyc
 *__pycache__/*
+*.h5
