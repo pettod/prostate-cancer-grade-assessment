@@ -1,0 +1,9 @@
+.venv/*
+.env/*
+*.tiff
+*.png
+*.jpg
+*.jpeg
+*.vscode
+*.pyc
+*__pycache__/*
