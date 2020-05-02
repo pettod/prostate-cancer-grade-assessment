@@ -112,8 +112,8 @@ def train():
 
 
 def main():
-    #train()
-    test()
+    train()
+    #test()
 
 
 main()
