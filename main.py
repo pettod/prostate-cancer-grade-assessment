@@ -4,6 +4,7 @@ from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
 
 import glob
+import numpy as np
 import os
 import pandas as pd
 import time
@@ -20,7 +21,7 @@ TRAIN_X_DIR = os.path.join(ROOT, "train_images/")
 TRAIN_Y_DIR = os.path.join(ROOT, "train.csv")
 VALID_X_DIR = TRAIN_X_DIR
 VALID_Y_DIR = TRAIN_Y_DIR
-TEST_DIR = TRAIN_X_DIR #os.path.join(ROOT, "test_images")
+TEST_DIR = os.path.join(ROOT, "test_images")
 
 # Model parameters
 LOAD_MODEL = False
@@ -55,21 +56,30 @@ def loadModel(load_pretrained_model=True, model_root="models"):
 
 
 def test():
-    submission_df = pd.read_csv(os.path.join(ROOT, "sample_submission.csv"))
-    test_df = pd.read_csv(os.path.join(ROOT, "test.csv"))
+    # Define submission file, model and data generator
+    submission_file = pd.read_csv(os.path.join(ROOT, "sample_submission.csv"))
     model = loadModel(False)  # Remove False
     test_generator = DataGenerator()
     test_batch_generator = test_generator.getImageGeneratorAndNames(
         TEST_DIR, PATCH_SIZE, BATCH_SIZE, normalize=True, shuffle=False)
     number_of_batches = test_generator.numberOfBatchesPerEpoch(
         TEST_DIR, BATCH_SIZE)
+
+    # Get image names and predictions
     predictions = []
+    image_names = []
     for i in range(number_of_batches):
-        batch, image_names = next(test_batch_generator)
-        predictions.append(model.predict(batch))
-    #submission_df = predict_submission(test_df, test_path, passes=3)
-    submission_df.to_csv("submission.csv", index=False)
-    submission_df.head()
+        batch, batch_image_names = next(test_batch_generator)
+        image_names += batch_image_names
+        predictions += list(np.argmax(model.predict(batch), axis=1))
+
+    # Write submission file
+    for i in range(len(predictions)):
+        submission_file.at[i, "image_id"] = \
+            image_names[i].split('/')[-1].split('.')[0]
+        submission_file.at[i, "isup_grade"] = predictions[i]
+    submission_file.to_csv("submission.csv", index=False)
+    submission_file.head()
 
 
 def train():
@@ -102,8 +112,8 @@ def train():
 
 
 def main():
-    train()
-    #test()
+    #train()
+    test()
 
 
 main()
