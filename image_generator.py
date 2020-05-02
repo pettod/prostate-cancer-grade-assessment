@@ -49,7 +49,7 @@ class DataGenerator:
             start_x, start_y), 0, patch_shape))[..., :3]
         return patch
 
-    def getImageGenerator(
+    def getImageGeneratorAndNames(
             self, data_directory, patch_size, batch_size, normalize=False,
             shuffle=True):
         self.__shuffle = shuffle
@@ -64,13 +64,15 @@ class DataGenerator:
             self.__pickIndices()
 
             # Read images
+            image_names = [
+                self.__image_names[i] for i in self.__latest_used_indices]
             images = np.array([
                 self.__cropPatch(os.path.join(
                     data_directory, self.__image_names[i]))
                 for i in self.__latest_used_indices])
             if normalize:
                 images = self.normalizeArray(np.array(images))
-            yield images
+            yield images, image_names
 
     def normalizeArray(self, data_array, max_value=255):
         return ((data_array / max_value - 0.5) * 2).astype(np.float32)
@@ -97,11 +99,11 @@ class DataGenerator:
         self.__shuffle = shuffle
 
         labels = pd.read_csv(labels_file_path)["isup_grade"]
-        batch_generator = self.getImageGenerator(
+        batch_generator = self.getImageGeneratorAndNames(
             image_directory, patch_size, batch_size, normalize, shuffle)
 
         while True:
-            X_batch = next(batch_generator)
+            X_batch, image_names = next(batch_generator)
             y_batch = np.array([labels[i] for i in self.__latest_used_indices])
             y_batch = tf.keras.utils.to_categorical(y_batch, number_of_classes)
             yield X_batch, y_batch
