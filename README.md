@@ -1,8 +1,8 @@
-# prostate-cancer-grade-assesment
-Kaggle: Prostate cANcer graDe Assessment (PANDA) Challenge
+# Prostate Cancer Grade Assesment
 
+Kaggle competition: Prostate cANcer graDe Assessment (PANDA) Challenge <https://www.kaggle.com/c/prostate-cancer-grade-assessment>
 
-# Installation
+## Installation
 
 1. Install Python 3.6
 
