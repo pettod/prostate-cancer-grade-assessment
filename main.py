@@ -9,9 +9,9 @@ import pandas as pd
 import time
 
 # Project files
-from image_generator import DataGenerator
-from network import net
-from utils import getCallbacks
+from src.image_generator import DataGenerator
+from src.network import net
+from src.utils import getCallbacks
 
 
 # Data paths
@@ -20,7 +20,7 @@ TRAIN_X_DIR = os.path.join(ROOT, "train_images/")
 TRAIN_Y_DIR = os.path.join(ROOT, "train.csv")
 VALID_X_DIR = TRAIN_X_DIR
 VALID_Y_DIR = TRAIN_Y_DIR
-TEST_DIR = os.path.join(ROOT, "test_images")
+TEST_DIR = TRAIN_X_DIR #os.path.join(ROOT, "test_images")
 
 # Model parameters
 LOAD_MODEL = False
