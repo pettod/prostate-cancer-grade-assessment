@@ -1,4 +1,4 @@
-# Prostate Cancer Grade Assesment
+# Prostate Cancer Grade Assessment
 
 Kaggle competition: Prostate cANcer graDe Assessment (PANDA) Challenge <https://www.kaggle.com/c/prostate-cancer-grade-assessment>
 
@@ -16,5 +16,5 @@ apt-get install python3-openslide
 3. Install Python libraries
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
