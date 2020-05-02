@@ -43,11 +43,20 @@ class DataGenerator:
 
     def __cropPatch(self, image_name):
         image_slide = OpenSlide(image_name)
-        patch_shape = (self.__patch_size, self.__patch_size)
-        start_x, start_y = 0, 0
-        patch = np.asarray(image_slide.read_region((
-            start_x, start_y), 0, patch_shape))[..., :3]
-        return patch
+        high_resolution_image = np.array(image_slide.read_region((
+            0, 0), 0, image_slide.dimensions))[..., :3]
+        cell_coordinates = np.where(np.mean(
+            high_resolution_image, axis=-1) < 200)
+        while True:
+            random_coordinate_indices = random.sample(
+                range(cell_coordinates[0].shape[0]), 1)
+            (start_y, start_x) = (
+                cell_coordinates[0][random_coordinate_indices[0]],
+                cell_coordinates[1][random_coordinate_indices[0]])
+            end_x, end_y = np.array([start_x, start_y]) + self.__patch_size
+            patch = high_resolution_image[start_y:end_y, start_x:end_x]
+            if np.mean(patch) < 230:
+                return patch
 
     def getImageGeneratorAndNames(
             self, data_directory, patch_size, batch_size, normalize=False,
