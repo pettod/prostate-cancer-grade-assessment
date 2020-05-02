@@ -1,6 +1,6 @@
 from tensorflow.keras.layers import \
     Activation, Add, BatchNormalization, Conv2D, Input, Lambda, UpSampling2D, \
-    Reshape, concatenate, Conv2DTranspose
+    Reshape, concatenate, Conv2DTranspose, Dense, Flatten
 from tensorflow.keras.models import Model
 import tensorflow as tf
 
@@ -17,5 +17,6 @@ def net(input_shape):
 
 def createKernels():
     kernels = []
-    kernels.append(Conv2D(32, [3, 3], padding="same", activation="relu"))
+    kernels.append(Flatten())
+    kernels.append(Dense(6, activation="softmax", use_bias=False))
     return kernels

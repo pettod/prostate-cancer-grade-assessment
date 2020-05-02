@@ -96,9 +96,11 @@ class DataGenerator:
         self.__shuffle = shuffle
 
         labels = pd.read_csv(labels_file_path)["isup_grade"]
+        batch_generator = self.getImageGenerator(
+            image_directory, patch_size, normalize, shuffle)
+
         while True:
-            X_batch = self.getImageGenerator(
-                image_directory, patch_size, normalize, shuffle)
+            X_batch = next(batch_generator)
             y_batch = np.array([labels[i] for i in self.__latest_used_indices])
             y_batch = tf.keras.utils.to_categorical(y_batch, number_of_classes)
             yield X_batch, y_batch

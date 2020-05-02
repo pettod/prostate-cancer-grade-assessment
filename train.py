@@ -40,12 +40,12 @@ def loadModel(load_pretrained_model=True, model_root="models"):
             })
         print("Loaded model: {}".format(latest_model))
     else:
-        model = net((PATCH_SIZE, PATCH_SIZE, 3))
+        model = net((PATCH_SIZE, PATCH_SIZE, 4))
 
         # Compile model
         model.compile(
             optimizer=Adam(LEARNING_RATE),
-            loss='categorical_crossentropy')
+            loss="categorical_crossentropy")
     print("Number of model parameters: {:,}".format(model.count_params()))
     return model
 
@@ -56,15 +56,15 @@ def train():
     save_root = "models/{}".format(PROGRAM_TIME_STAMP)
 
     # Load data generators
-    train_data_generator = DataGenerator()
-    train_batch_generator = train_data_generator.trainImagesAndLabels(
+    train_generator = DataGenerator()
+    train_batch_generator = train_generator.trainImagesAndLabels(
         TRAIN_X_DIR, TRAIN_Y_DIR, BATCH_SIZE, PATCH_SIZE, normalize=True)
-    number_of_train_batches = train_data_generator.numberOfBatchesPerEpoch(
+    number_of_train_batches = train_generator.numberOfBatchesPerEpoch(
         TRAIN_X_DIR, BATCH_SIZE)
-    valid_data_generator = DataGenerator()
-    valid_batch_generator = valid_data_generator.trainImagesAndLabels(
+    valid_generator = DataGenerator()
+    valid_batch_generator = valid_generator.trainImagesAndLabels(
         VALID_X_DIR, VALID_Y_DIR, BATCH_SIZE, PATCH_SIZE, normalize=True)
-    number_of_valid_batches = valid_data_generator.numberOfBatchesPerEpoch(
+    number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch(
         VALID_X_DIR, BATCH_SIZE)
 
     # Define callbacks
