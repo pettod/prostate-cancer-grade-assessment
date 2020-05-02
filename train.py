@@ -5,6 +5,7 @@ import tensorflow as tf
 
 import glob
 import os
+import pandas as pd
 import time
 
 # Project files
@@ -14,10 +15,12 @@ from utils import getCallbacks
 
 
 # Data paths
-TRAIN_X_DIR = "../input/prostate-cancer-grade-assessment_old/train_images/"
-TRAIN_Y_DIR = "../input/prostate-cancer-grade-assessment_old/train.csv"
-VALID_X_DIR = ""
-VALID_Y_DIR = ""
+ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
+TRAIN_X_DIR = os.path.join(ROOT, "train_images/")
+TRAIN_Y_DIR = os.path.join(ROOT, "train.csv")
+VALID_X_DIR = TRAIN_X_DIR
+VALID_Y_DIR = TRAIN_Y_DIR
+TEST_DIR = os.path.join(ROOT, "test_images")
 
 # Model parameters
 LOAD_MODEL = False
@@ -51,6 +54,14 @@ def loadModel(load_pretrained_model=True, model_root="models"):
     return model
 
 
+def test():
+    submission_df = pd.read_csv(os.path.join(ROOT, "sample_submission.csv"))
+    test_df = pd.read_csv(os.path.join(ROOT, "test.csv"))
+    #submission_df = predict_submission(test_df, test_path, passes=3)
+    submission_df.to_csv("submission.csv", index=False)
+    submission_df.head()
+
+
 def train():
     # Load model
     model = loadModel(LOAD_MODEL)
@@ -82,6 +93,7 @@ def train():
 
 def main():
     train()
+    #test()
 
 
 main()
