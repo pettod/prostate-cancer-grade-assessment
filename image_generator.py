@@ -63,7 +63,7 @@ class DataGenerator:
                 start_y = 0
                 images.append(np.asarray(image_slide.read_region((
                     start_x, start_y), 0,
-                    (patch_size, patch_size))))
+                    (patch_size, patch_size)))[..., :3])
             if normalize:
                 images = self.normalizeArray(np.array(images))
             else:

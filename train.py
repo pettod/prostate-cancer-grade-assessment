@@ -40,12 +40,13 @@ def loadModel(load_pretrained_model=True, model_root="models"):
             })
         print("Loaded model: {}".format(latest_model))
     else:
-        model = net((PATCH_SIZE, PATCH_SIZE, 4))
+        model = net((PATCH_SIZE, PATCH_SIZE, 3))
 
         # Compile model
         model.compile(
             optimizer=Adam(LEARNING_RATE),
-            loss="categorical_crossentropy")
+            loss="categorical_crossentropy",
+            metrics=["accuracy"])
     print("Number of model parameters: {:,}".format(model.count_params()))
     return model
 
