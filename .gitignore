@@ -1,11 +1,13 @@
 .venv/*
 .env/*
+.vscode/*
 models/*
+*__pycache__/*
+
 *.tiff
 *.png
 *.jpg
 *.jpeg
-*.vscode
 *.pyc
-*__pycache__/*
 *.h5
+*.csv

@@ -57,6 +57,16 @@ def loadModel(load_pretrained_model=True, model_root="models"):
 def test():
     submission_df = pd.read_csv(os.path.join(ROOT, "sample_submission.csv"))
     test_df = pd.read_csv(os.path.join(ROOT, "test.csv"))
+    model = loadModel(False)  # Remove False
+    test_generator = DataGenerator()
+    test_batch_generator = test_generator.getImageGenerator(
+        TEST_DIR, PATCH_SIZE, BATCH_SIZE, normalize=True, shuffle=False)
+    number_of_batches = test_generator.numberOfBatchesPerEpoch(
+        TEST_DIR, BATCH_SIZE)
+    predictions = []
+    for i in range(number_of_batches):
+        batch = next(test_batch_generator)
+        predictions.append(model.predict(batch))
     #submission_df = predict_submission(test_df, test_path, passes=3)
     submission_df.to_csv("submission.csv", index=False)
     submission_df.head()
@@ -92,8 +102,8 @@ def train():
 
 
 def main():
-    train()
-    #test()
+    #train()
+    test()
 
 
 main()

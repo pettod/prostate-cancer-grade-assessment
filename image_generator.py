@@ -50,11 +50,13 @@ class DataGenerator:
         return patch
 
     def getImageGenerator(
-            self, data_directory, patch_size, normalize=False, shuffle=True):
+            self, data_directory, patch_size, batch_size, normalize=False,
+            shuffle=True):
         self.__shuffle = shuffle
         self.__number_of_training_samples = 0
         self.__patch_size = patch_size
-        for file_name in glob.glob(os.path.join(data_directory, '*')):
+        self.__batch_size = batch_size
+        for file_name in sorted(glob.glob(os.path.join(data_directory, '*'))):
             self.__image_names.append(file_name)
             self.__number_of_training_samples += 1
 
@@ -96,7 +98,7 @@ class DataGenerator:
 
         labels = pd.read_csv(labels_file_path)["isup_grade"]
         batch_generator = self.getImageGenerator(
-            image_directory, patch_size, normalize, shuffle)
+            image_directory, patch_size, batch_size, normalize, shuffle)
 
         while True:
             X_batch = next(batch_generator)
