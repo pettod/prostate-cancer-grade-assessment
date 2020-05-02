@@ -15,7 +15,6 @@ class DataGenerator:
         self.__image_names = []
         self.__number_of_training_samples = None
         self.__patch_size = None
-        self.__train_directory = None
         self.__batch_size = None
         self.__shuffle = None
 
@@ -42,10 +41,19 @@ class DataGenerator:
         for i in reversed(sorted(self.__latest_used_indices)):
             self.__available_indices.remove(i)
 
+    def __cropPatch(self, image_name):
+        image_slide = OpenSlide(image_name)
+        patch_shape = (self.__patch_size, self.__patch_size)
+        start_x, start_y = 0, 0
+        patch = np.asarray(image_slide.read_region((
+            start_x, start_y), 0, patch_shape))[..., :3]
+        return patch
+
     def getImageGenerator(
             self, data_directory, patch_size, normalize=False, shuffle=True):
         self.__shuffle = shuffle
         self.__number_of_training_samples = 0
+        self.__patch_size = patch_size
         for file_name in glob.glob(os.path.join(data_directory, '*')):
             self.__image_names.append(file_name)
             self.__number_of_training_samples += 1
@@ -54,20 +62,12 @@ class DataGenerator:
             self.__pickIndices()
 
             # Read images
-            images = []
-            for i in self.__latest_used_indices:
-                image_name = os.path.join(
-                    data_directory, self.__image_names[i])
-                image_slide = OpenSlide(image_name)
-                start_x = 0
-                start_y = 0
-                images.append(np.asarray(image_slide.read_region((
-                    start_x, start_y), 0,
-                    (patch_size, patch_size)))[..., :3])
+            images = np.array([
+                self.__cropPatch(os.path.join(
+                    data_directory, self.__image_names[i]))
+                for i in self.__latest_used_indices])
             if normalize:
                 images = self.normalizeArray(np.array(images))
-            else:
-                images = np.array(images)
             yield images
 
     def normalizeArray(self, data_array, max_value=255):
@@ -90,7 +90,6 @@ class DataGenerator:
             self, image_directory, labels_file_path, batch_size,
             patch_size, normalize=False, shuffle=True,
             number_of_classes=6):
-        self.__train_directory = image_directory
         self.__batch_size = batch_size
         self.__patch_size = patch_size
         self.__shuffle = shuffle
