@@ -3,6 +3,7 @@ from tensorflow.keras.callbacks import \
 
 import os
 from sklearn.metrics import confusion_matrix
+import numpy as np
 
 
 def getCallbacks(patience, save_root, batch_size):
