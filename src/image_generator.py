@@ -43,6 +43,7 @@ class DataGenerator:
 
     def __cropPatch(self, image_name):
         image_slide = OpenSlide(image_name)
+        image_shape = image_slide.dimensions
         low_resolution_image = np.array(image_slide.read_region((
             0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
         cell_coordinates = np.where(np.mean(
@@ -54,6 +55,8 @@ class DataGenerator:
             (start_y, start_x) = (
                 cell_coordinates[0][random_coordinate_indices[0]]*16,
                 cell_coordinates[1][random_coordinate_indices[0]]*16)
+            start_x = min(start_x, image_shape[0] - self.__patch_size - 1)
+            start_y = min(start_y, image_shape[1] - self.__patch_size - 1)
             end_x, end_y = np.array([start_x, start_y]) + self.__patch_size
             patch = np.array(image_slide.read_region((
                 start_x, start_y), 0, patch_shape))[..., :3]
