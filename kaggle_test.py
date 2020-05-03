@@ -21,32 +21,32 @@ from openslide import OpenSlide
 
 # Data paths
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
-TRAIN_X_DIR = os.path.join(ROOT, "train_images/")
-TRAIN_Y_DIR = os.path.join(ROOT, "train.csv")
-VALID_X_DIR = TRAIN_X_DIR
-VALID_Y_DIR = TRAIN_Y_DIR
 TEST_DIR = os.path.join(ROOT, "test_images")
 
 # Model parameters
-LOAD_MODEL = False
 BATCH_SIZE = 16
 PATCH_SIZE = 256
-EPOCHS = 1000
-PATIENCE = 10
-LEARNING_RATE = 1e-4
-
-PROGRAM_TIME_STAMP = time.strftime("%Y-%m-%d_%H%M%S")
+PATCHES_PER_IMAGE = 4
 
 
 class DataGenerator:
-    def __init__(self):
+    def __init__(
+            self, data_directory, batch_size, patch_size, patches_per_image=1,
+            train_valid_split=None):
         self.__available_indices = []
         self.__latest_used_indices = []
         self.__image_names = []
         self.__number_of_training_samples = None
-        self.__patch_size = None
-        self.__batch_size = None
+        self.__patch_size = patch_size
+        self.__batch_size = batch_size
         self.__shuffle = None
+        self.__patches_per_image = patches_per_image
+        self.__train_valid_split = train_valid_split
+        self.__sample_split_index = None
+        self.__data_directory = data_directory
+        self.__labels = None
+
+        self.__defineFileNames()
 
     def __pickIndices(self):
         # Define indices
@@ -71,24 +71,94 @@ class DataGenerator:
         for i in reversed(sorted(self.__latest_used_indices)):
             self.__available_indices.remove(i)
 
-    def __cropPatch(self, image_name):
+    def __cropPatches(self, image_name, downsample_level=0):
+        # downsample_level : 0, 1, 2
+        # NOTE: only level 0 seems to work currently, other levels crop white
+        # areas
         image_slide = OpenSlide(image_name)
-        patch_shape = (self.__patch_size, self.__patch_size)
-        start_x, start_y = 0, 0
-        patch = np.asarray(image_slide.read_region((
-            start_x, start_y), 0, patch_shape))[..., :3]
-        return patch
 
-    def getImageGeneratorAndNames(
-            self, data_directory, patch_size, batch_size, normalize=False,
-            shuffle=True):
-        self.__shuffle = shuffle
+        # Resolution downsample levels: 1, 4, 16
+        resolution_relation = 4 ** (2 - downsample_level)
+        image_shape = image_slide.level_dimensions[downsample_level]
+
+        # Find coordinates from where to select patch
+        low_resolution_image = np.array(image_slide.read_region((
+            0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
+        cell_coordinates = np.array(np.where(np.mean(
+            low_resolution_image, axis=-1) < 200)) - \
+            int(self.__patch_size / 2 / resolution_relation)
+        cell_coordinates[cell_coordinates < 0] = 0
+        if cell_coordinates.shape[1] == 0:
+            random_coordinates = []
+            for i in range(100):
+                random_x = random.randint(
+                    0, image_shape[0] - self.__patch_size - 1)
+                random_y = random.randint(
+                    0, image_shape[1] - self.__patch_size - 1)
+                random_coordinates.append([random_y, random_x])
+            cell_coordinates = np.transpose(np.array(random_coordinates))
+
+        # Crop patches
+        patches = []
+        for i in range(self.__patches_per_image):
+            j = 0
+            while True:
+                j += 1
+                random_index = random.randint(0, cell_coordinates.shape[1] - 1)
+
+                # Scale coordinates by the number of resolution relation
+                # between low-resolution image and high/mid-resolution
+                start_y, start_x = \
+                    cell_coordinates[:, random_index] * resolution_relation
+                start_x = min(
+                    start_x, image_shape[0] - self.__patch_size - 1)
+                start_y = min(
+                    start_y, image_shape[1] - self.__patch_size - 1)
+                end_x, end_y = np.array(
+                    [start_x, start_y]) + self.__patch_size
+
+                # Crop from mid/high resolution image
+                patch = np.array(image_slide.read_region((
+                    start_x, start_y), downsample_level,
+                    (self.__patch_size, self.__patch_size)))[..., :3]
+
+                # Patch has enough colored areas (not pure white) or has been
+                # iterated more than 5 times
+                if np.mean(patch) < 230 or j >= 5:
+                    patches.append(patch)
+                    break
+        return patches
+
+    def __defineFileNames(self):
+        file_names = sorted(glob.glob(os.path.join(
+            self.__data_directory, '*')))
+        if self.__train_valid_split is not None:
+            split_percentage = self.__train_valid_split
+            if split_percentage < 0:
+                split_percentage += 1
+            self.__sample_split_index = int(split_percentage * len(file_names))
+            if self.__train_valid_split > 0:
+                file_names = file_names[:self.__sample_split_index]
+            else:
+                file_names = file_names[self.__sample_split_index:]
         self.__number_of_training_samples = 0
-        self.__patch_size = patch_size
-        self.__batch_size = batch_size
-        for file_name in sorted(glob.glob(os.path.join(data_directory, '*'))):
+        for file_name in file_names:
             self.__image_names.append(file_name)
             self.__number_of_training_samples += 1
+
+    def __defineLabels(self, labels_file_path):
+        all_labels = pd.read_csv(labels_file_path)["isup_grade"]
+        if self.__train_valid_split is None:
+            self.__labels = all_labels
+        else:
+            if self.__train_valid_split < 0:
+                self.__labels = all_labels[self.__sample_split_index:]
+            else:
+                self.__labels = all_labels[:self.__sample_split_index]
+
+    def getImageGeneratorAndNames(
+            self, normalize=False, shuffle=True):
+        self.__shuffle = shuffle
 
         while True:
             self.__pickIndices()
@@ -96,13 +166,13 @@ class DataGenerator:
             # Read images
             image_names = [
                 self.__image_names[i] for i in self.__latest_used_indices]
-            images = np.array([
-                self.__cropPatch(os.path.join(
-                    data_directory, self.__image_names[i]))
-                for i in self.__latest_used_indices])
+            images = np.moveaxis(np.array([
+                self.__cropPatches(os.path.join(
+                    self.__data_directory, self.__image_names[i]))
+                for i in self.__latest_used_indices]), 0, 1)
             if normalize:
                 images = self.normalizeArray(np.array(images))
-            yield images, image_names
+            yield list(images), image_names
 
     def normalizeArray(self, data_array, max_value=255):
         return ((data_array / max_value - 0.5) * 2).astype(np.float32)
@@ -113,47 +183,21 @@ class DataGenerator:
         data_array[data_array > max_value] = max_value
         return data_array.astype(np.uint8)
 
-    def numberOfBatchesPerEpoch(
-            self, data_directory, batch_size):
-        number_of_dataset_images = 0
-        for file_name in glob.glob(os.path.join(data_directory, '*')):
-            number_of_dataset_images += 1
-        return math.ceil(number_of_dataset_images / batch_size)
+    def numberOfBatchesPerEpoch(self):
+        return math.ceil(len(self.__image_names) / self.__batch_size)
 
     def trainImagesAndLabels(
-            self, image_directory, labels_file_path, batch_size,
-            patch_size, normalize=False, shuffle=True,
+            self, labels_file_path, normalize=False, shuffle=True,
             number_of_classes=6):
-        self.__batch_size = batch_size
-        self.__patch_size = patch_size
-        self.__shuffle = shuffle
-
-        labels = pd.read_csv(labels_file_path)["isup_grade"]
-        batch_generator = self.getImageGeneratorAndNames(
-            image_directory, patch_size, batch_size, normalize, shuffle)
+        self.__defineLabels(labels_file_path)
+        batch_generator = self.getImageGeneratorAndNames(normalize, shuffle)
 
         while True:
             X_batch, image_names = next(batch_generator)
-            y_batch = np.array([labels[i] for i in self.__latest_used_indices])
+            y_batch = np.array(
+                [self.__labels[i] for i in self.__latest_used_indices])
             y_batch = tf.keras.utils.to_categorical(y_batch, number_of_classes)
             yield X_batch, y_batch
-
-
-def net(input_shape):
-    h, w, c = input_shape
-    inputs = Input(shape=input_shape)
-    x = inputs
-    kernels = createKernels()
-    for kernel in kernels:
-        x = kernel(x)
-    return Model(inputs=inputs, outputs=x)
-
-
-def createKernels():
-    kernels = []
-    kernels.append(Flatten())
-    kernels.append(Dense(6, activation="softmax", use_bias=False))
-    return kernels
 
 
 def getCallbacks(patience, save_root, batch_size):
@@ -192,14 +236,6 @@ def loadModel(load_pretrained_model=True, model_root="models"):
                 "tf": tf
             })
         print("Loaded model: {}".format(latest_model))
-    else:
-        model = net((PATCH_SIZE, PATCH_SIZE, 3))
-
-        # Compile model
-        model.compile(
-            optimizer=Adam(LEARNING_RATE),
-            loss="categorical_crossentropy",
-            metrics=["accuracy"])
     print("Number of model parameters: {:,}".format(model.count_params()))
     return model
 
@@ -207,12 +243,12 @@ def loadModel(load_pretrained_model=True, model_root="models"):
 def test():
     # Define submission file, model and data generator
     submission_file = pd.read_csv(os.path.join(ROOT, "sample_submission.csv"))
-    model = loadModel(False)  # Remove False
-    test_generator = DataGenerator()
+    model = loadModel()
+    test_generator = DataGenerator(
+        TEST_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE)
     test_batch_generator = test_generator.getImageGeneratorAndNames(
-        TEST_DIR, PATCH_SIZE, BATCH_SIZE, normalize=True, shuffle=False)
-    number_of_batches = test_generator.numberOfBatchesPerEpoch(
-        TEST_DIR, BATCH_SIZE)
+        normalize=True, shuffle=False)
+    number_of_batches = test_generator.numberOfBatchesPerEpoch()
 
     # Get image names and predictions
     predictions = []
@@ -231,37 +267,11 @@ def test():
     submission_file.head()
 
 
-def train():
-    # Load model
-    model = loadModel(LOAD_MODEL)
-    save_root = "models/{}".format(PROGRAM_TIME_STAMP)
-
-    # Load data generators
-    train_generator = DataGenerator()
-    train_batch_generator = train_generator.trainImagesAndLabels(
-        TRAIN_X_DIR, TRAIN_Y_DIR, BATCH_SIZE, PATCH_SIZE, normalize=True)
-    number_of_train_batches = train_generator.numberOfBatchesPerEpoch(
-        TRAIN_X_DIR, BATCH_SIZE)
-    valid_generator = DataGenerator()
-    valid_batch_generator = valid_generator.trainImagesAndLabels(
-        VALID_X_DIR, VALID_Y_DIR, BATCH_SIZE, PATCH_SIZE, normalize=True)
-    number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch(
-        VALID_X_DIR, BATCH_SIZE)
-
-    # Define callbacks
-    callbacks = getCallbacks(PATIENCE, save_root, BATCH_SIZE)
-
-    # Start training
-    history = model.fit_generator(
-        train_batch_generator, steps_per_epoch=number_of_train_batches,
-        epochs=EPOCHS, validation_data=valid_batch_generator,
-        validation_steps=number_of_valid_batches,
-        callbacks=callbacks)
-    print("Model saved to: '{}'".format(save_root))
-
-
 def main():
-    #train()
+    # Enable multiple GPUs
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    session = tf.Session(config=config)
     test()
 
 
