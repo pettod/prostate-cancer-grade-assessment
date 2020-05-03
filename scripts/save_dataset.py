@@ -56,11 +56,13 @@ def main():
         patch = createSquarePatch(batch)
         image_name = image_names[0].split('/')[-1].split('.')[0]
         image_class = getImageClass(csv_file, image_name, i)
-        result = Image.fromarray(patch)
-        result.save(os.path.join(SAVE_DIR, *[str(image_class), image_name + ".png"]))
+        image = Image.fromarray(patch)
+        image.save(os.path.join(SAVE_DIR, *[str(image_class), image_name + ".png"]))
         time_spent = (time.time() - start_time) / 60
-        print("Image: {}/{}. Time spent: {:.1f}min".format(
-            i+1, number_of_images, time_spent), end="\r")
+        estimated_time_of_arrival = time_spent * number_of_images / (i+1)
+        print("Image: {}/{}. Time spent: {:.1f}min. ETA: {:.1f}min".format(
+            i+1, number_of_images, time_spent, estimated_time_of_arrival),
+            end="\r")
     print()
 
 
