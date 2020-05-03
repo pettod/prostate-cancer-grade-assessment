@@ -60,7 +60,7 @@ class DataGenerator:
             low_resolution_image, axis=-1) < 200)) - \
             int(self.__patch_size / 2 / resolution_relation)
         cell_coordinates[cell_coordinates < 0] = 0
-        if cell_coordinates.shape[0] == 0:
+        if cell_coordinates.shape[1] != 0:
             cell_coordinates = np.array([[0], [0]])
 
         # Crop patches
@@ -69,8 +69,7 @@ class DataGenerator:
             j = 0
             while True:
                 j += 1
-                random_index = random.randint(
-                    0, cell_coordinates[0].shape[0] - 1)
+                random_index = random.randint(0, cell_coordinates.shape[1] - 1)
 
                 # Scale coordinates by the number of resolution relation
                 # between low-resolution image and high/mid-resolution
