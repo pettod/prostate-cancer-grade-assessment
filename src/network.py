@@ -5,29 +5,46 @@ from tensorflow.keras.layers import \
 from tensorflow.keras.models import Model
 import tensorflow as tf
 from tensorflow.keras.applications import InceptionResNetV2
+import math
 
 
 def net(input_shape, patches_per_image):
     patches = [Input(input_shape) for i in range(patches_per_image)]
-    branches = [branch(patch) for patch in patches]
-    merge = Concatenate(axis=-1)(branches)
-    dense = Dense(256)(merge)
-    dropout = Dropout(0.3)(dense)
-    output = Dense(6, activation="softmax")(dropout)
-    return Model(patches, output)
+    patch = concatenateSquare(patches)
+    x = Conv2D(32, 5, activation="relu")(patch)
+    x = resnetBlock(x, 32, 5)
+    x = resnetBlock(x, 32, 5)
+    x = resnetBlock(x, 32, 5)
+    x = Conv2D(64, 5, strides=2, activation="relu")(x)
+    x = resnetBlock(x, 64, 5)
+    x = resnetBlock(x, 64, 5)
+    x = resnetBlock(x, 64, 5)
+    x = Conv2D(128, 5, strides=2, activation="relu")(x)
+    x = resnetBlock(x, 128, 5)
+    x = resnetBlock(x, 128, 5)
+    x = resnetBlock(x, 128, 5)
+    x = Conv2D(256, 5, strides=2, activation="relu")(x)
+    x = resnetBlock(x, 256, 5)
+    x = resnetBlock(x, 256, 5)
+    x = resnetBlock(x, 256, 5)
+    x = Flatten()(x)
+    x = Dense(6, activation="softmax", use_bias=False)(x)
+    return Model(patches, x)
 
 
-def branch(input_image):
-    x = Conv2D(128, (3, 3))(input_image)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Conv2D(128, (3, 3))(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Conv2D(64, (3, 3))(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = GlobalAveragePooling2D()(x)
-    x = Dense(256)(x)
-    x = Activation('relu')(x)
-    return Dropout(0.3)(x)
+def resnetBlock(x, dimensions, kernel_size):
+    resnet_1 = Conv2D(
+        dimensions, kernel_size, activation="relu", padding="same")(x)
+    resnet_2 = Conv2D(
+        dimensions, kernel_size, activation=None, padding="same")(resnet_1)
+    return Add()([x, resnet_2])
+
+
+def concatenateSquare(patches):
+    patches_per_side = int(math.sqrt(len(patches)))
+    concatenated_patches = []
+    for i in range(patches_per_side):
+        concatenated_patches.append(
+            Concatenate(axis=1)(patches[:patches_per_side]))
+        patches = patches[patches_per_side:]
+    return Concatenate(axis=2)(concatenated_patches)
