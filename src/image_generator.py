@@ -6,7 +6,6 @@ import os
 import tensorflow as tf
 import glob
 from openslide import OpenSlide
-import cv2
 
 
 class DataGenerator:
