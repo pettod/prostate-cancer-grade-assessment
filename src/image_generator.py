@@ -60,8 +60,15 @@ class DataGenerator:
             low_resolution_image, axis=-1) < 200)) - \
             int(self.__patch_size / 2 / resolution_relation)
         cell_coordinates[cell_coordinates < 0] = 0
-        if cell_coordinates.shape[1] != 0:
-            cell_coordinates = np.array([[0], [0]])
+        if cell_coordinates.shape[1] == 0:
+            random_coordinates = []
+            for i in range(100):
+                random_x = random.randint(
+                    0, image_shape[0] - self.__patch_size - 1)
+                random_y = random.randint(
+                    0, image_shape[1] - self.__patch_size - 1)
+                random_coordinates.append([random_y, random_x])
+            cell_coordinates = np.transpose(np.array(random_coordinates))
 
         # Crop patches
         patches = []
