@@ -27,8 +27,8 @@ TEST_DIR = os.path.join(ROOT, "test_images")
 # Model parameters
 LOAD_MODEL = False
 BATCH_SIZE = 8
-PATCH_SIZE = 256
-PATCHES_PER_IMAGE = 4
+PATCH_SIZE = 64
+PATCHES_PER_IMAGE = 16
 EPOCHS = 1000
 PATIENCE = 10
 LEARNING_RATE = 1e-4
@@ -55,34 +55,6 @@ def loadModel(load_pretrained_model=True, model_root="models"):
             metrics=["accuracy"])
     print("Number of model parameters: {:,}".format(model.count_params()))
     return model
-
-
-def test():
-    # Define submission file, model and data generator
-    submission_file = pd.read_csv(os.path.join(ROOT, "sample_submission.csv"))
-    model = loadModel(False)  # Remove False
-    test_generator = DataGenerator()
-    test_batch_generator = test_generator.getImageGeneratorAndNames(
-        TEST_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE, normalize=True,
-        shuffle=False)
-    number_of_batches = test_generator.numberOfBatchesPerEpoch(
-        TEST_DIR, BATCH_SIZE)
-
-    # Get image names and predictions
-    predictions = []
-    image_names = []
-    for i in range(number_of_batches):
-        batch, batch_image_names = next(test_batch_generator)
-        image_names += batch_image_names
-        predictions += list(np.argmax(model.predict(batch), axis=1))
-
-    # Write submission file
-    for i in range(len(predictions)):
-        submission_file.at[i, "image_id"] = \
-            image_names[i].split('/')[-1].split('.')[0]
-        submission_file.at[i, "isup_grade"] = predictions[i]
-    submission_file.to_csv("submission.csv", index=False)
-    submission_file.head()
 
 
 def train():
@@ -123,7 +95,6 @@ def main():
     session = tf.Session(config=config)
 
     train()
-    #test()
 
 
 main()
