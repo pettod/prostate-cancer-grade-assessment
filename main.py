@@ -21,6 +21,7 @@ TRAIN_X_DIR = os.path.join(ROOT, "train_images/")
 TRAIN_Y_DIR = os.path.join(ROOT, "train.csv")
 VALID_X_DIR = TRAIN_X_DIR
 VALID_Y_DIR = TRAIN_Y_DIR
+TRAIN_VALID_SPLIT = 0.9
 TEST_DIR = os.path.join(ROOT, "test_images")
 
 # Model parameters
@@ -90,18 +91,18 @@ def train():
     save_root = "models/{}".format(PROGRAM_TIME_STAMP)
 
     # Load data generators
-    train_generator = DataGenerator()
+    train_generator = DataGenerator(
+        TRAIN_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
+        TRAIN_VALID_SPLIT)
     train_batch_generator = train_generator.trainImagesAndLabels(
-        TRAIN_X_DIR, TRAIN_Y_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        normalize=True)
-    number_of_train_batches = train_generator.numberOfBatchesPerEpoch(
-        TRAIN_X_DIR, BATCH_SIZE)
-    valid_generator = DataGenerator()
+        TRAIN_Y_DIR, normalize=True)
+    number_of_train_batches = train_generator.numberOfBatchesPerEpoch()
+    valid_generator = DataGenerator(
+        VALID_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
+        1-TRAIN_VALID_SPLIT)
     valid_batch_generator = valid_generator.trainImagesAndLabels(
-        VALID_X_DIR, VALID_Y_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        normalize=True)
-    number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch(
-        VALID_X_DIR, BATCH_SIZE)
+        VALID_Y_DIR, normalize=True)
+    number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch()
 
     # Define callbacks
     callbacks = getCallbacks(PATIENCE, save_root, BATCH_SIZE)
