@@ -25,8 +25,9 @@ TEST_DIR = os.path.join(ROOT, "test_images")
 
 # Model parameters
 LOAD_MODEL = False
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 PATCH_SIZE = 256
+PATCHES_PER_IMAGE = 4
 EPOCHS = 1000
 PATIENCE = 10
 LEARNING_RATE = 1e-4
@@ -44,7 +45,7 @@ def loadModel(load_pretrained_model=True, model_root="models"):
             })
         print("Loaded model: {}".format(latest_model))
     else:
-        model = net((PATCH_SIZE, PATCH_SIZE, 3))
+        model = net((PATCH_SIZE, PATCH_SIZE, 3), PATCHES_PER_IMAGE)
 
         # Compile model
         model.compile(
@@ -61,7 +62,8 @@ def test():
     model = loadModel(False)  # Remove False
     test_generator = DataGenerator()
     test_batch_generator = test_generator.getImageGeneratorAndNames(
-        TEST_DIR, PATCH_SIZE, BATCH_SIZE, normalize=True, shuffle=False)
+        TEST_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE, normalize=True,
+        shuffle=False)
     number_of_batches = test_generator.numberOfBatchesPerEpoch(
         TEST_DIR, BATCH_SIZE)
 
@@ -90,12 +92,14 @@ def train():
     # Load data generators
     train_generator = DataGenerator()
     train_batch_generator = train_generator.trainImagesAndLabels(
-        TRAIN_X_DIR, TRAIN_Y_DIR, BATCH_SIZE, PATCH_SIZE, normalize=True)
+        TRAIN_X_DIR, TRAIN_Y_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
+        normalize=True)
     number_of_train_batches = train_generator.numberOfBatchesPerEpoch(
         TRAIN_X_DIR, BATCH_SIZE)
     valid_generator = DataGenerator()
     valid_batch_generator = valid_generator.trainImagesAndLabels(
-        VALID_X_DIR, VALID_Y_DIR, BATCH_SIZE, PATCH_SIZE, normalize=True)
+        VALID_X_DIR, VALID_Y_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
+        normalize=True)
     number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch(
         VALID_X_DIR, BATCH_SIZE)
 

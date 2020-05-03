@@ -6,6 +6,7 @@ import os
 import tensorflow as tf
 import glob
 from openslide import OpenSlide
+import cv2
 
 
 class DataGenerator:
@@ -17,6 +18,7 @@ class DataGenerator:
         self.__patch_size = None
         self.__batch_size = None
         self.__shuffle = None
+        self.__patches_per_image = None
 
     def __pickIndices(self):
         # Define indices
@@ -41,35 +43,66 @@ class DataGenerator:
         for i in reversed(sorted(self.__latest_used_indices)):
             self.__available_indices.remove(i)
 
-    def __cropPatch(self, image_name):
+    def __cropPatches(self, image_name, downsample_level=0):
+        # downsample_level : 0, 1, 2
+        # NOTE: only level 0 seems to work currently, other levels crop white
+        # areas
         image_slide = OpenSlide(image_name)
-        image_shape = image_slide.dimensions
+
+        # Resolution downsample levels: 1, 4, 16
+        resolution_relation = 4 ** (2 - downsample_level)
+        image_shape = image_slide.level_dimensions[downsample_level]
+
+        # Find coordinates from where to select patch
         low_resolution_image = np.array(image_slide.read_region((
             0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
-        cell_coordinates = np.where(np.mean(
-            low_resolution_image, axis=-1) < 200)
-        patch_shape = (self.__patch_size, self.__patch_size)
-        while True:
-            random_coordinate_indices = random.sample(
-                range(cell_coordinates[0].shape[0]), 1)
-            (start_y, start_x) = (
-                cell_coordinates[0][random_coordinate_indices[0]]*16,
-                cell_coordinates[1][random_coordinate_indices[0]]*16)
-            start_x = min(start_x, image_shape[0] - self.__patch_size - 1)
-            start_y = min(start_y, image_shape[1] - self.__patch_size - 1)
-            end_x, end_y = np.array([start_x, start_y]) + self.__patch_size
-            patch = np.array(image_slide.read_region((
-                start_x, start_y), 0, patch_shape))[..., :3]
-            if np.mean(patch) < 230:
-                return patch
+        cell_coordinates = np.array(np.where(np.mean(
+            low_resolution_image, axis=-1) < 200)) - \
+            int(self.__patch_size / 2 / resolution_relation)
+        cell_coordinates[cell_coordinates < 0] = 0
+        if cell_coordinates.shape[0] == 0:
+            cell_coordinates = np.array([[0], [0]])
+
+        # Crop patches
+        patches = []
+        for i in range(self.__patches_per_image):
+            j = 0
+            while True:
+                j += 1
+                random_index = random.randint(
+                    0, cell_coordinates[0].shape[0] - 1)
+
+                # Scale coordinates by the number of resolution relation
+                # between low-resolution image and high/mid-resolution
+                start_y, start_x = \
+                    cell_coordinates[:, random_index] * resolution_relation
+                start_x = min(
+                    start_x, image_shape[0] - self.__patch_size - 1)
+                start_y = min(
+                    start_y, image_shape[1] - self.__patch_size - 1)
+                end_x, end_y = np.array(
+                    [start_x, start_y]) + self.__patch_size
+
+                # Crop from mid/high resolution image
+                patch = np.array(image_slide.read_region((
+                    start_x, start_y), downsample_level,
+                    (self.__patch_size, self.__patch_size)))[..., :3]
+
+                # Patch has enough colored areas (not pure white) or has been
+                # iterated more than 5 times
+                if np.mean(patch) < 230 or j >= 5:
+                    patches.append(patch)
+                    break
+        return patches
 
     def getImageGeneratorAndNames(
-            self, data_directory, patch_size, batch_size, normalize=False,
-            shuffle=True):
+            self, data_directory, batch_size, patch_size,
+            patches_per_image=1, normalize=False, shuffle=True):
         self.__shuffle = shuffle
         self.__number_of_training_samples = 0
         self.__patch_size = patch_size
         self.__batch_size = batch_size
+        self.__patches_per_image = patches_per_image
         for file_name in sorted(glob.glob(os.path.join(data_directory, '*'))):
             self.__image_names.append(file_name)
             self.__number_of_training_samples += 1
@@ -80,13 +113,13 @@ class DataGenerator:
             # Read images
             image_names = [
                 self.__image_names[i] for i in self.__latest_used_indices]
-            images = np.array([
-                self.__cropPatch(os.path.join(
+            images = np.moveaxis(np.array([
+                self.__cropPatches(os.path.join(
                     data_directory, self.__image_names[i]))
-                for i in self.__latest_used_indices])
+                for i in self.__latest_used_indices]), 0, 1)
             if normalize:
                 images = self.normalizeArray(np.array(images))
-            yield images, image_names
+            yield list(images), image_names
 
     def normalizeArray(self, data_array, max_value=255):
         return ((data_array / max_value - 0.5) * 2).astype(np.float32)
@@ -106,15 +139,12 @@ class DataGenerator:
 
     def trainImagesAndLabels(
             self, image_directory, labels_file_path, batch_size,
-            patch_size, normalize=False, shuffle=True,
+            patch_size, patches_per_image=1, normalize=False, shuffle=True,
             number_of_classes=6):
-        self.__batch_size = batch_size
-        self.__patch_size = patch_size
-        self.__shuffle = shuffle
-
         labels = pd.read_csv(labels_file_path)["isup_grade"]
         batch_generator = self.getImageGeneratorAndNames(
-            image_directory, patch_size, batch_size, normalize, shuffle)
+            image_directory, batch_size, patch_size, patches_per_image,
+            normalize, shuffle)
 
         while True:
             X_batch, image_names = next(batch_generator)
