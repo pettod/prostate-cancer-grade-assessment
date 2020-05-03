@@ -24,9 +24,9 @@ ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
 TEST_DIR = os.path.join(ROOT, "test_images")
 
 # Model parameters
-BATCH_SIZE = 16
-PATCH_SIZE = 256
-PATCHES_PER_IMAGE = 4
+BATCH_SIZE = 8
+PATCH_SIZE = 64
+PATCHES_PER_IMAGE = 16
 
 
 class DataGenerator:
