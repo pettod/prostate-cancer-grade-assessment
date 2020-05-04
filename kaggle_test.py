@@ -245,6 +245,7 @@ def test():
     predictions = []
     image_names = []
     for i in range(number_of_batches):
+        print("Batch {}/{}".format(i+1, number_of_batches), end="\r")
         batch, batch_image_names = next(test_batch_generator)
         image_names += batch_image_names
         predictions += list(np.argmax(model.predict(batch), axis=1))
