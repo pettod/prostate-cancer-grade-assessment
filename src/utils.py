@@ -3,6 +3,7 @@ from tensorflow.keras.callbacks import \
 
 import os
 from sklearn.metrics import confusion_matrix
+import math
 import numpy as np
 
 
@@ -65,3 +66,8 @@ def quadratic_kappa(actuals, preds, N=5):
             num += w[i][j]*O[i][j]
             den += w[i][j]*E[i][j]
     return (1 - (num/den))
+
+
+def getNumberOfSteps(data_directory, batch_size):
+    return math.floor(sum(
+        [len(files) for r, d, files in os.walk(data_directory)]) / batch_size)

@@ -1,6 +1,7 @@
 # Libraries
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import tensorflow as tf
 
 import glob
@@ -10,25 +11,20 @@ import pandas as pd
 import time
 
 # Project files
-from src.image_generator import DataGenerator
 from src.network import net
-from src.utils import getCallbacks
+from src.utils import getCallbacks, getNumberOfSteps
 
 
 # Data paths
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
-TRAIN_X_DIR = os.path.join(ROOT, "train_images/")
-TRAIN_Y_DIR = os.path.join(ROOT, "train.csv")
+TRAIN_X_DIR = os.path.join(ROOT, "patches_256_4x4")
 VALID_X_DIR = TRAIN_X_DIR
-VALID_Y_DIR = TRAIN_Y_DIR
 TRAIN_VALID_SPLIT = 0.9
-TEST_DIR = os.path.join(ROOT, "test_images")
 
 # Model parameters
 LOAD_MODEL = False
-BATCH_SIZE = 8
-PATCH_SIZE = 64
-PATCHES_PER_IMAGE = 16
+BATCH_SIZE = 16
+PATCH_SIZE = 256
 EPOCHS = 1000
 PATIENCE = 10
 LEARNING_RATE = 1e-4
@@ -46,7 +42,7 @@ def loadModel(load_pretrained_model=True, model_root="models"):
             })
         print("Loaded model: {}".format(latest_model))
     else:
-        model = net((PATCH_SIZE, PATCH_SIZE, 3), PATCHES_PER_IMAGE)
+        model = net((PATCH_SIZE, PATCH_SIZE, 3))
 
         # Compile model
         model.compile(
@@ -63,18 +59,14 @@ def train():
     save_root = "models/{}".format(PROGRAM_TIME_STAMP)
 
     # Load data generators
-    train_generator = DataGenerator(
-        TRAIN_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        TRAIN_VALID_SPLIT)
-    train_batch_generator = train_generator.trainImagesAndLabels(
-        TRAIN_Y_DIR, normalize=True)
-    number_of_train_batches = train_generator.numberOfBatchesPerEpoch()
-    valid_generator = DataGenerator(
-        VALID_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        1-TRAIN_VALID_SPLIT)
-    valid_batch_generator = valid_generator.trainImagesAndLabels(
-        VALID_Y_DIR, normalize=True)
-    number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch()
+    train_batch_generator = ImageDataGenerator().flow_from_directory(
+        TRAIN_X_DIR, target_size=(PATCH_SIZE, PATCH_SIZE),
+        class_mode="categorical", shuffle=True, batch_size=BATCH_SIZE)
+    number_of_train_batches = getNumberOfSteps(TRAIN_X_DIR, BATCH_SIZE)
+    valid_batch_generator = ImageDataGenerator().flow_from_directory(
+        VALID_X_DIR, target_size=(PATCH_SIZE, PATCH_SIZE),
+        class_mode="categorical", shuffle=True, batch_size=BATCH_SIZE)
+    number_of_valid_batches = getNumberOfSteps(VALID_X_DIR, BATCH_SIZE)
 
     # Define callbacks
     callbacks = getCallbacks(PATIENCE, save_root, BATCH_SIZE)
@@ -89,10 +81,8 @@ def train():
 
 
 def main():
-    # Enable multiple GPUs
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    session = tf.Session(config=config)
+    # Don't train on GPU 0 (to reduce overheating)
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     train()
 

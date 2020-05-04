@@ -8,9 +8,8 @@ from tensorflow.keras.applications import InceptionResNetV2
 import math
 
 
-def net(input_shape, patches_per_image):
-    patches = [Input(input_shape) for i in range(patches_per_image)]
-    patch = concatenateSquare(patches)
+def net(input_shape, patches_per_image=1):
+    patch = Input(input_shape)
     x = Conv2D(32, 5, activation="relu")(patch)
     x = resnetBlock(x, 32, 5)
     x = resnetBlock(x, 32, 5)
@@ -29,7 +28,7 @@ def net(input_shape, patches_per_image):
     x = resnetBlock(x, 256, 5)
     x = Flatten()(x)
     x = Dense(6, activation="softmax", use_bias=False)(x)
-    return Model(patches, x)
+    return Model(patch, x)
 
 
 def resnetBlock(x, dimensions, kernel_size):
