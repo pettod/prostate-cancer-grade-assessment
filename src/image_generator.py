@@ -5,13 +5,14 @@ import pandas as pd
 import os
 import tensorflow as tf
 import glob
+import cv2
 from openslide import OpenSlide
 
 
 class DataGenerator:
     def __init__(
             self, data_directory, batch_size, patch_size, patches_per_image=1,
-            train_valid_split=None):
+            train_valid_split=None, concatenate_patches=False):
         self.__available_indices = []
         self.__latest_used_indices = []
         self.__image_names = []
@@ -24,6 +25,7 @@ class DataGenerator:
         self.__sample_split_index = None
         self.__data_directory = data_directory
         self.__labels = None
+        self.__concatenate_patches = concatenate_patches
 
         self.__defineFileNames()
 
@@ -135,6 +137,18 @@ class DataGenerator:
             else:
                 self.__labels = all_labels[:self.__sample_split_index]
 
+    def __createSquarePatches(self, batch):
+        batch = list(np.moveaxis(np.array(batch), 0, 1))
+        patches_per_row = int(math.sqrt(self.__patches_per_image))
+        concat_batch = []
+        for patches in batch:
+            hconcat_patches = []
+            for i in range(patches_per_row):
+                hconcat_patches.append(cv2.hconcat(patches[:patches_per_row]))
+                patches = patches[patches_per_row:]
+            concat_batch.append(cv2.vconcat(hconcat_patches))
+        return np.array(concat_batch)
+
     def getImageGeneratorAndNames(
             self, normalize=False, shuffle=True):
         self.__shuffle = shuffle
@@ -151,7 +165,10 @@ class DataGenerator:
                 for i in self.__latest_used_indices]), 0, 1)
             if normalize:
                 images = self.normalizeArray(np.array(images))
-            yield list(images), image_names
+            images = list(images)
+            if self.__concatenate_patches:
+                images = self.__createSquarePatches(images)
+            yield images, image_names
 
     def normalizeArray(self, data_array, max_value=255):
         return ((data_array / max_value - 0.5) * 2).astype(np.float32)
