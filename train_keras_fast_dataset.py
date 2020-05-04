@@ -19,7 +19,6 @@ from src.utils import getCallbacks, getNumberOfSteps
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
 TRAIN_X_DIR = os.path.join(ROOT, "patches_256_4x4")
 VALID_X_DIR = TRAIN_X_DIR
-TRAIN_VALID_SPLIT = 0.9
 
 # Model parameters
 LOAD_MODEL = False
