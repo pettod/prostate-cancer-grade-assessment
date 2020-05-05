@@ -19,16 +19,8 @@ SAVE_DIR = os.path.join(ROOT, PROGRAM_TIME_STAMP)
 # Batch details
 PATCH_SIZE = 64
 PATCHES_PER_IMAGE = 16
-
-
-def createSquarePatch(batch):
-    patches = list(np.concatenate(batch, axis=0))
-    patches_per_row = int(math.sqrt(PATCHES_PER_IMAGE))
-    hconcat_patches = []
-    for i in range(patches_per_row):
-        hconcat_patches.append(cv2.hconcat(patches[:patches_per_row]))
-        patches = patches[patches_per_row:]
-    return cv2.vconcat(hconcat_patches)
+CONCATENATE_PATCHES = True
+SPLIT_IMAGES_INTO_CLASS_FOLDERS = False
 
 
 def getImageClass(csv_file, image_name, i):
@@ -41,23 +33,31 @@ def getImageClass(csv_file, image_name, i):
 
 def main():
     test_generator = DataGenerator(
-        TRAIN_X_DIR, 1, PATCH_SIZE, PATCHES_PER_IMAGE)
+        TRAIN_X_DIR, 1, PATCH_SIZE, PATCHES_PER_IMAGE,
+        concatenate_patches=CONCATENATE_PATCHES)
     test_batch_generator = test_generator.getImageGeneratorAndNames(
         normalize=False, shuffle=False)
     number_of_images = test_generator.numberOfBatchesPerEpoch()
     os.makedirs(SAVE_DIR)
-    for i in range(6):
-        os.makedirs(os.path.join(SAVE_DIR, str(i)))
+    if SPLIT_IMAGES_INTO_CLASS_FOLDERS:
+        for i in range(6):
+            os.makedirs(os.path.join(SAVE_DIR, str(i)))
     csv_file = pd.read_csv(TRAIN_Y_DIR)
 
     start_time = time.time()
     for i in range(number_of_images):
         batch, image_names = next(test_batch_generator)
-        patch = createSquarePatch(batch)
+        patch = batch[0]
         image_name = image_names[0].split('/')[-1].split('.')[0]
         image_class = getImageClass(csv_file, image_name, i)
         image = Image.fromarray(patch)
-        image.save(os.path.join(SAVE_DIR, *[str(image_class), image_name + ".png"]))
+        if SPLIT_IMAGES_INTO_CLASS_FOLDERS:
+            image_path = os.path.join(
+                SAVE_DIR, *[str(image_class), image_name + ".png"])
+        else:
+            image_path = os.path.join(
+                SAVE_DIR, image_name + ".png")
+        image.save(image_path)
         time_spent = (time.time() - start_time) / 60
         estimated_time_of_arrival = time_spent * number_of_images / (i+1)
         print("Image: {}/{}. Time spent: {:.1f}min. ETA: {:.1f}min".format(
