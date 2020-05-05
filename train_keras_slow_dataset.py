@@ -25,13 +25,15 @@ TRAIN_VALID_SPLIT = 0.9
 TEST_DIR = os.path.join(ROOT, "test_images")
 
 # Model parameters
-LOAD_MODEL = True
+LOAD_MODEL = False
 BATCH_SIZE = 8
 PATCH_SIZE = 64
 PATCHES_PER_IMAGE = 16
+INPUT_SHAPE = (PATCH_SIZE*4, PATCH_SIZE*4, 3)
 EPOCHS = 1000
 PATIENCE = 10
 LEARNING_RATE = 1e-4
+CONCATENATE_PATCHES = True
 
 PROGRAM_TIME_STAMP = time.strftime("%Y-%m-%d_%H%M%S")
 
@@ -46,7 +48,7 @@ def loadModel(load_pretrained_model=True, model_root="models"):
             })
         print("Loaded model: {}".format(latest_model))
     else:
-        model = net((PATCH_SIZE, PATCH_SIZE, 3), PATCHES_PER_IMAGE)
+        model = net(INPUT_SHAPE, PATCHES_PER_IMAGE)
 
         # Compile model
         model.compile(
@@ -65,13 +67,13 @@ def train():
     # Load data generators
     train_generator = DataGenerator(
         TRAIN_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        TRAIN_VALID_SPLIT)
+        TRAIN_VALID_SPLIT, concatenate_patches=CONCATENATE_PATCHES)
     train_batch_generator = train_generator.trainImagesAndLabels(
         TRAIN_Y_DIR, normalize=True)
     number_of_train_batches = train_generator.numberOfBatchesPerEpoch()
     valid_generator = DataGenerator(
         VALID_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        1-TRAIN_VALID_SPLIT)
+        1-TRAIN_VALID_SPLIT, concatenate_patches=CONCATENATE_PATCHES)
     valid_batch_generator = valid_generator.trainImagesAndLabels(
         VALID_Y_DIR, normalize=True)
     number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch()
