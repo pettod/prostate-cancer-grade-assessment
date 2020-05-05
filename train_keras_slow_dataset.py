@@ -17,16 +17,15 @@ from src.utils import getCallbacks
 
 # Data paths
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
-TRAIN_X_DIR = os.path.join(ROOT, "train_images/")
+TRAIN_X_DIR = os.path.join(ROOT, "patches_256_4x4")
 TRAIN_Y_DIR = os.path.join(ROOT, "train.csv")
 VALID_X_DIR = TRAIN_X_DIR
 VALID_Y_DIR = TRAIN_Y_DIR
 TRAIN_VALID_SPLIT = 0.9
-TEST_DIR = os.path.join(ROOT, "test_images")
 
 # Model parameters
 LOAD_MODEL = False
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 PATCH_SIZE = 64
 PATCHES_PER_IMAGE = 16
 INPUT_SHAPE = (PATCH_SIZE*4, PATCH_SIZE*4, 3)
@@ -73,7 +72,7 @@ def train():
     number_of_train_batches = train_generator.numberOfBatchesPerEpoch()
     valid_generator = DataGenerator(
         VALID_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        1-TRAIN_VALID_SPLIT, concatenate_patches=CONCATENATE_PATCHES)
+        TRAIN_VALID_SPLIT-1, concatenate_patches=CONCATENATE_PATCHES)
     valid_batch_generator = valid_generator.trainImagesAndLabels(
         VALID_Y_DIR, normalize=True)
     number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch()
@@ -91,10 +90,14 @@ def train():
 
 
 def main():
-    # Enable multiple GPUs
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    session = tf.Session(config=config)
+    if False:
+        # Enable multiple GPUs
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        session = tf.Session(config=config)
+    else:
+        # Don't train on GPU 0 (to reduce overheating)
+        os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     train()
 
