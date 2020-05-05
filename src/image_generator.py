@@ -53,6 +53,33 @@ class DataGenerator:
         for i in reversed(sorted(self.__latest_used_indices)):
             self.__available_indices.remove(i)
 
+    def __getCellCoordinatesFromImage(
+            self, image_slide, resolution_relation, image_shape):
+
+        # Read low resolution image (3 images resolutions)
+        low_resolution_image = np.array(image_slide.read_region((
+            0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
+
+        # Find pixels which have cell / exclude white pixels
+        # Take center of the cell coordinate by subtracting 0.5*patch_size
+        cell_coordinates = np.array(np.where(np.mean(
+            low_resolution_image, axis=-1) < 200)) - \
+            int(self.__patch_size / 2 / resolution_relation)
+        cell_coordinates[cell_coordinates < 0] = 0
+
+        # If image includes only white areas or very white, generate random
+        # coordinates
+        if cell_coordinates.shape[1] == 0:
+            random_coordinates = []
+            for i in range(100):
+                random_x = random.randint(
+                    0, image_shape[0] - self.__patch_size - 1)
+                random_y = random.randint(
+                    0, image_shape[1] - self.__patch_size - 1)
+                random_coordinates.append([random_y, random_x])
+            cell_coordinates = np.transpose(np.array(random_coordinates))
+        return cell_coordinates
+
     def __cropPatchesFromImage(self, image_name, downsample_level=0):
         # downsample_level : 0, 1, 2
         # NOTE: only level 0 seems to work currently, other levels crop white
@@ -64,21 +91,8 @@ class DataGenerator:
         image_shape = image_slide.level_dimensions[downsample_level]
 
         # Find coordinates from where to select patch
-        low_resolution_image = np.array(image_slide.read_region((
-            0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
-        cell_coordinates = np.array(np.where(np.mean(
-            low_resolution_image, axis=-1) < 200)) - \
-            int(self.__patch_size / 2 / resolution_relation)
-        cell_coordinates[cell_coordinates < 0] = 0
-        if cell_coordinates.shape[1] == 0:
-            random_coordinates = []
-            for i in range(100):
-                random_x = random.randint(
-                    0, image_shape[0] - self.__patch_size - 1)
-                random_y = random.randint(
-                    0, image_shape[1] - self.__patch_size - 1)
-                random_coordinates.append([random_y, random_x])
-            cell_coordinates = np.transpose(np.array(random_coordinates))
+        cell_coordinates = self.__getCellCoordinatesFromImage(
+            image_slide, resolution_relation, image_shape)
 
         # Crop patches
         patches = []
