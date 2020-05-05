@@ -59,7 +59,8 @@ def main():
                 SAVE_DIR, image_name + ".png")
         image.save(image_path)
         time_spent = (time.time() - start_time) / 60
-        estimated_time_of_arrival = time_spent * number_of_images / (i+1)
+        estimated_time_of_arrival = \
+            time_spent * (number_of_images - (i+1)) / (i+1)
         print("Image: {}/{}. Time spent: {:.1f}min. ETA: {:.1f}min".format(
             i+1, number_of_images, time_spent, estimated_time_of_arrival),
             end="\r")
