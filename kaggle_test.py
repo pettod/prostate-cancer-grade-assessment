@@ -34,20 +34,22 @@ CONCATENATE_PATCHES = True
 class DataGenerator:
     def __init__(
             self, data_directory, batch_size, patch_size, patches_per_image=1,
-            train_valid_split=None, concatenate_patches=False):
+            concatenate_patches=False, normalize=False, shuffle=True,
+            rotate=False):
         self.__available_indices = []
-        self.__latest_used_indices = []
-        self.__image_names = []
-        self.__number_of_training_samples = None
-        self.__patch_size = patch_size
         self.__batch_size = batch_size
-        self.__shuffle = None
-        self.__patches_per_image = patches_per_image
-        self.__train_valid_split = train_valid_split
-        self.__sample_split_index = None
-        self.__data_directory = data_directory
-        self.__labels = None
         self.__concatenate_patches = concatenate_patches
+        self.__data_directory = data_directory
+        self.__data_stored_into_folders = None
+        self.__image_names = []
+        self.__labels = None
+        self.__latest_used_indices = []
+        self.__normalize = normalize
+        self.__number_of_data_samples = None
+        self.__patch_size = patch_size
+        self.__patches_per_image = patches_per_image
+        self.__rotate = rotate
+        self.__shuffle = shuffle
 
         self.__defineFileNames()
 
@@ -55,7 +57,7 @@ class DataGenerator:
         # Define indices
         if len(self.__available_indices) == 0:
             self.__available_indices = list(
-                np.arange(0, self.__number_of_training_samples))
+                np.arange(0, self.__number_of_data_samples))
         if self.__batch_size < len(self.__available_indices):
             if self.__shuffle:
                 random_indices_from_list = random.sample(
@@ -155,30 +157,30 @@ class DataGenerator:
     def __defineFileNames(self):
         file_names = sorted(glob.glob(os.path.join(
             self.__data_directory, '*')))
-        if self.__train_valid_split is not None:
-            split_percentage = self.__train_valid_split
-            if split_percentage < 0:
-                split_percentage += 1
-            self.__sample_split_index = int(split_percentage * len(file_names))
-            if self.__train_valid_split > 0:
-                file_names = file_names[:self.__sample_split_index]
-            else:
-                file_names = file_names[self.__sample_split_index:]
-        self.__number_of_training_samples = len(file_names)
-        self.__image_names = file_names
 
-    def __defineLabels(self, labels_file_path):
-        all_labels = pd.read_csv(labels_file_path)["isup_grade"].values.tolist()
-        if self.__train_valid_split is None:
-            self.__labels = all_labels
+        # Data has been stored into class folders
+        if len(file_names[0].split('.')) == 1:
+            self.__data_stored_into_folders = True
+            file_names = sorted(glob.glob(os.path.join(
+                self.__data_directory, *['*', '*'])))
         else:
-            if self.__train_valid_split > 0:
-                self.__labels = all_labels[:self.__sample_split_index]
-            else:
-                self.__labels = all_labels[self.__sample_split_index:]
+            self.__data_stored_into_folders = False
+        self.__image_names = np.array(file_names)
+
+        self.__number_of_data_samples = self.__image_names.shape[0]
+
+    def __getLabels(self, number_of_classes):
+        if self.__data_stored_into_folders:
+            y_batch = np.array([
+                self.__image_names[i].split('/')[-2]
+                for i in self.__latest_used_indices])
+        else:
+            y_batch = np.array(
+                [self.__labels[i] for i in self.__latest_used_indices])
+        return tf.keras.utils.to_categorical(y_batch, number_of_classes)
 
     def __createSquarePatches(self, batch):
-        batch = list(np.moveaxis(np.array(batch), 0, 1))
+        batch = list(np.moveaxis(batch, 0, 1))
         patches_per_row = int(math.sqrt(self.__patches_per_image))
         concat_batch = []
         for patches in batch:
@@ -195,10 +197,14 @@ class DataGenerator:
             images.append(np.array(Image.open(self.__image_names[i])))
         return np.array(images)
 
-    def getImageGeneratorAndNames(
-            self, normalize=False, shuffle=True):
-        self.__shuffle = shuffle
+    def __rotateBatchImages(self, images):
+        rotated_images = []
+        for i in range(images.shape[0]):
+            random_angle = random.randint(0, 3)
+            rotated_images.append(np.rot90(images[i], random_angle))
+        return np.array(rotated_images)
 
+    def getImageGeneratorAndNames(self):
         while True:
             self.__pickIndices()
 
@@ -207,15 +213,14 @@ class DataGenerator:
                 self.__image_names[i] for i in self.__latest_used_indices]
             if image_names[0].split('.')[-1] == "tiff":
                 images = self.__cropPatchesFromImages()
-                if normalize:
-                    images = self.normalizeArray(np.array(images))
-                images = list(images)
                 if self.__concatenate_patches:
                     images = self.__createSquarePatches(images)
             else:
                 images = self.__readPngImages()
-                if normalize:
-                    images = self.normalizeArray(images)
+            if self.__rotate:
+                images = self.__rotateBatchImages(images)
+            if self.__normalize:
+                images = self.normalizeArray(images)
             yield images, image_names
 
     def normalizeArray(self, data_array, max_value=255):
@@ -228,19 +233,18 @@ class DataGenerator:
         return data_array.astype(np.uint8)
 
     def numberOfBatchesPerEpoch(self):
-        return math.ceil(len(self.__image_names) / self.__batch_size)
+        return math.ceil(self.__number_of_data_samples / self.__batch_size)
 
     def trainImagesAndLabels(
-            self, labels_file_path, normalize=False, shuffle=True,
-            number_of_classes=6):
-        self.__defineLabels(labels_file_path)
-        batch_generator = self.getImageGeneratorAndNames(normalize, shuffle)
+            self, labels_file_path=None, number_of_classes=6):
+        if not self.__data_stored_into_folders:
+            self.__labels = pd.read_csv(
+                labels_file_path)["isup_grade"].values.tolist()
+        batch_generator = self.getImageGeneratorAndNames()
 
         while True:
             X_batch, image_names = next(batch_generator)
-            y_batch = np.array(
-                [self.__labels[i] for i in self.__latest_used_indices])
-            y_batch = tf.keras.utils.to_categorical(y_batch, number_of_classes)
+            y_batch = self.__getLabels(number_of_classes)
             yield X_batch, y_batch
 
 
@@ -262,9 +266,8 @@ def test():
     model = loadModel()
     test_generator = DataGenerator(
         TEST_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        concatenate_patches=CONCATENATE_PATCHES)
-    test_batch_generator = test_generator.getImageGeneratorAndNames(
-        normalize=True, shuffle=False)
+        concatenate_patches=CONCATENATE_PATCHES, normalize=True, shuffle=False)
+    test_batch_generator = test_generator.getImageGeneratorAndNames()
     number_of_batches = test_generator.numberOfBatchesPerEpoch()
 
     # Get image names and predictions
