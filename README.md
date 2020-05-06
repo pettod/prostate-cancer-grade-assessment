@@ -4,7 +4,7 @@ Kaggle competition: Prostate cANcer graDe Assessment (PANDA) Challenge <https://
 
 ## Installation
 
-During the development, Python 3.6 was used. Setup the project with the following 5 steps. Below the steps, there is instructions how to do the installation on Ubuntu.
+During the development, Python 3.6 was used. Setup the project with the following 5 steps. Below the steps, there are commands how to do the installation on Ubuntu (please be aware what they will do).
 
 1. Install [Openslide](https://openslide.org/download/)
 
