@@ -72,9 +72,9 @@ def main():
     # Load data generator
     test_generator = DataGenerator(
         TRAIN_X_DIR, 1, PATCH_SIZE, PATCHES_PER_IMAGE,
-        concatenate_patches=CONCATENATE_PATCHES)
-    test_batch_generator = test_generator.getImageGeneratorAndNames(
-        normalize=False, shuffle=False)
+        concatenate_patches=CONCATENATE_PATCHES, normalize=False,
+        shuffle=False)
+    test_batch_generator = test_generator.getImageGeneratorAndNames()
     number_of_images = test_generator.numberOfBatchesPerEpoch()
 
     # Create new folders
