@@ -13,17 +13,15 @@ from openslide import OpenSlide
 class DataGenerator:
     def __init__(
             self, data_directory, batch_size, patch_size, patches_per_image=1,
-            train_valid_split=None, concatenate_patches=False):
+            concatenate_patches=False):
         self.__available_indices = []
         self.__latest_used_indices = []
         self.__image_names = []
-        self.__number_of_training_samples = None
+        self.__number_of_data_samples = None
         self.__patch_size = patch_size
         self.__batch_size = batch_size
         self.__shuffle = None
         self.__patches_per_image = patches_per_image
-        self.__train_valid_split = train_valid_split
-        self.__sample_split_index = None
         self.__data_directory = data_directory
         self.__labels = None
         self.__concatenate_patches = concatenate_patches
@@ -34,7 +32,7 @@ class DataGenerator:
         # Define indices
         if len(self.__available_indices) == 0:
             self.__available_indices = list(
-                np.arange(0, self.__number_of_training_samples))
+                np.arange(0, self.__number_of_data_samples))
         if self.__batch_size < len(self.__available_indices):
             if self.__shuffle:
                 random_indices_from_list = random.sample(
@@ -132,29 +130,9 @@ class DataGenerator:
         return np.moveaxis(np.array(images), 0, 1)
 
     def __defineFileNames(self):
-        file_names = sorted(glob.glob(os.path.join(
+        self.__image_names = sorted(glob.glob(os.path.join(
             self.__data_directory, '*')))
-        if self.__train_valid_split is not None:
-            split_percentage = self.__train_valid_split
-            if split_percentage < 0:
-                split_percentage += 1
-            self.__sample_split_index = int(split_percentage * len(file_names))
-            if self.__train_valid_split > 0:
-                file_names = file_names[:self.__sample_split_index]
-            else:
-                file_names = file_names[self.__sample_split_index:]
-        self.__number_of_training_samples = len(file_names)
-        self.__image_names = file_names
-
-    def __defineLabels(self, labels_file_path):
-        all_labels = pd.read_csv(labels_file_path)["isup_grade"].values.tolist()
-        if self.__train_valid_split is None:
-            self.__labels = all_labels
-        else:
-            if self.__train_valid_split > 0:
-                self.__labels = all_labels[:self.__sample_split_index]
-            else:
-                self.__labels = all_labels[self.__sample_split_index:]
+        self.__number_of_data_samples = len(self.__image_names)
 
     def __createSquarePatches(self, batch):
         batch = list(np.moveaxis(np.array(batch), 0, 1))
@@ -210,9 +188,11 @@ class DataGenerator:
         return math.ceil(len(self.__image_names) / self.__batch_size)
 
     def trainImagesAndLabels(
-            self, labels_file_path, normalize=False, shuffle=True,
+            self, labels_file_path=None, normalize=False, shuffle=True,
             number_of_classes=6):
-        self.__defineLabels(labels_file_path)
+        if self.__labels is None:
+            self.__labels = pd.read_csv(
+                labels_file_path)["isup_grade"].values.tolist()
         batch_generator = self.getImageGeneratorAndNames(normalize, shuffle)
 
         while True:
