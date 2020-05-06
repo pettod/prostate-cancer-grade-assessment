@@ -69,7 +69,7 @@ def train():
     # Load data generators
     train_generator = DataGenerator(
         TRAIN_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        concatenate_patches=CONCATENATE_PATCHES, normalize=True)
+        concatenate_patches=CONCATENATE_PATCHES, normalize=True, rotate=True)
     train_batch_generator = train_generator.trainImagesAndLabels(TRAIN_Y_DIR)
     number_of_train_batches = train_generator.numberOfBatchesPerEpoch()
     valid_generator = DataGenerator(

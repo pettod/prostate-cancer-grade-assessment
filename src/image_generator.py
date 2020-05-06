@@ -13,7 +13,8 @@ from openslide import OpenSlide
 class DataGenerator:
     def __init__(
             self, data_directory, batch_size, patch_size, patches_per_image=1,
-            concatenate_patches=False, normalize=False, shuffle=True):
+            concatenate_patches=False, normalize=False, shuffle=True,
+            rotate=False):
         self.__available_indices = []
         self.__batch_size = batch_size
         self.__concatenate_patches = concatenate_patches
@@ -26,6 +27,7 @@ class DataGenerator:
         self.__number_of_data_samples = None
         self.__patch_size = patch_size
         self.__patches_per_image = patches_per_image
+        self.__rotate = rotate
         self.__shuffle = shuffle
 
         self.__defineFileNames()
@@ -174,6 +176,13 @@ class DataGenerator:
             images.append(np.array(Image.open(self.__image_names[i])))
         return np.array(images)
 
+    def __rotateBatchImages(self, images):
+        rotated_images = []
+        for i in range(images.shape[0]):
+            random_angle = random.randint(0, 3)
+            rotated_images.append(np.rot90(images[i], random_angle))
+        return np.array(rotated_images)
+
     def getImageGeneratorAndNames(self):
         while True:
             self.__pickIndices()
@@ -187,6 +196,8 @@ class DataGenerator:
                     images = self.__createSquarePatches(images)
             else:
                 images = self.__readPngImages()
+            if self.__rotate:
+                images = self.__rotateBatchImages(images)
             if self.__normalize:
                 images = self.normalizeArray(images)
             yield images, image_names
