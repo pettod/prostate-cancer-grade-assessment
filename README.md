@@ -12,7 +12,7 @@ During the development, Python 3.6 was used. Setup the project with the followin
 
 1. Download dataset
 
-1. Move dataset into folder: `../input/`
+1. Move dataset into folder: `../input/`. You can also put the dataset to another hard drive and just create symbolic link to it. The code will handle that.
 
 1. Extract dataset
 
@@ -31,6 +31,6 @@ None of the following are required. Here is short description what scripts the p
 
 1. Split data into train and validation: `python scripts/split_train_and_valid_data.py`
 
-1. Create cropped data for faster data generation during training time: `python scripts/create_cropped_dataset.py`
+1. Create cropped data for faster data generation during the training time: `python scripts/create_cropped_dataset.py`
 
 1. Train: `python train_keras.py`
