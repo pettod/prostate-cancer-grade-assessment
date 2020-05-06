@@ -17,11 +17,10 @@ from src.utils import getCallbacks
 
 # Data paths
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
-TRAIN_X_DIR = os.path.join(ROOT, "patches_256_4x4")
+TRAIN_X_DIR = os.path.join(ROOT, "train_images")
 TRAIN_Y_DIR = os.path.join(ROOT, "train.csv")
-VALID_X_DIR = TRAIN_X_DIR
-VALID_Y_DIR = TRAIN_Y_DIR
-TRAIN_VALID_SPLIT = 0.9
+VALID_X_DIR = os.path.join(ROOT, "valid_images")
+VALID_Y_DIR = os.path.join(ROOT, "valid.csv")
 
 # Model parameters
 LOAD_MODEL = False
@@ -66,13 +65,13 @@ def train():
     # Load data generators
     train_generator = DataGenerator(
         TRAIN_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        TRAIN_VALID_SPLIT, concatenate_patches=CONCATENATE_PATCHES)
+        concatenate_patches=CONCATENATE_PATCHES)
     train_batch_generator = train_generator.trainImagesAndLabels(
         TRAIN_Y_DIR, normalize=True)
     number_of_train_batches = train_generator.numberOfBatchesPerEpoch()
     valid_generator = DataGenerator(
         VALID_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        TRAIN_VALID_SPLIT-1, concatenate_patches=CONCATENATE_PATCHES)
+        concatenate_patches=CONCATENATE_PATCHES)
     valid_batch_generator = valid_generator.trainImagesAndLabels(
         VALID_Y_DIR, normalize=True)
     number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch()
