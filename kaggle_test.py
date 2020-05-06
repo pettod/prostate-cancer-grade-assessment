@@ -74,7 +74,34 @@ class DataGenerator:
         for i in reversed(sorted(self.__latest_used_indices)):
             self.__available_indices.remove(i)
 
-    def __cropPatches(self, image_name, downsample_level=0):
+    def __getCellCoordinatesFromImage(
+            self, image_slide, resolution_relation, image_shape):
+
+        # Read low resolution image (3 images resolutions)
+        low_resolution_image = np.array(image_slide.read_region((
+            0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
+
+        # Find pixels which have cell / exclude white pixels
+        # Take center of the cell coordinate by subtracting 0.5*patch_size
+        cell_coordinates = np.array(np.where(np.mean(
+            low_resolution_image, axis=-1) < 200)) - \
+            int(self.__patch_size / 2 / resolution_relation)
+        cell_coordinates[cell_coordinates < 0] = 0
+
+        # If image includes only white areas or very white, generate random
+        # coordinates
+        if cell_coordinates.shape[1] == 0:
+            random_coordinates = []
+            for i in range(100):
+                random_x = random.randint(
+                    0, image_shape[0] - self.__patch_size - 1)
+                random_y = random.randint(
+                    0, image_shape[1] - self.__patch_size - 1)
+                random_coordinates.append([random_y, random_x])
+            cell_coordinates = np.transpose(np.array(random_coordinates))
+        return cell_coordinates
+
+    def __cropPatchesFromImage(self, image_name, downsample_level=0):
         # downsample_level : 0, 1, 2
         # NOTE: only level 0 seems to work currently, other levels crop white
         # areas
@@ -85,21 +112,8 @@ class DataGenerator:
         image_shape = image_slide.level_dimensions[downsample_level]
 
         # Find coordinates from where to select patch
-        low_resolution_image = np.array(image_slide.read_region((
-            0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
-        cell_coordinates = np.array(np.where(np.mean(
-            low_resolution_image, axis=-1) < 200)) - \
-            int(self.__patch_size / 2 / resolution_relation)
-        cell_coordinates[cell_coordinates < 0] = 0
-        if cell_coordinates.shape[1] == 0:
-            random_coordinates = []
-            for i in range(100):
-                random_x = random.randint(
-                    0, image_shape[0] - self.__patch_size - 1)
-                random_y = random.randint(
-                    0, image_shape[1] - self.__patch_size - 1)
-                random_coordinates.append([random_y, random_x])
-            cell_coordinates = np.transpose(np.array(random_coordinates))
+        cell_coordinates = self.__getCellCoordinatesFromImage(
+            image_slide, resolution_relation, image_shape)
 
         # Crop patches
         patches = []
@@ -132,6 +146,12 @@ class DataGenerator:
                     break
         return patches
 
+    def __cropPatchesFromImages(self):
+        images = []
+        for i in self.__latest_used_indices:
+            images.append(self.__cropPatchesFromImage(self.__image_names[i]))
+        return np.moveaxis(np.array(images), 0, 1)
+
     def __defineFileNames(self):
         file_names = sorted(glob.glob(os.path.join(
             self.__data_directory, '*')))
@@ -144,20 +164,18 @@ class DataGenerator:
                 file_names = file_names[:self.__sample_split_index]
             else:
                 file_names = file_names[self.__sample_split_index:]
-        self.__number_of_training_samples = 0
-        for file_name in file_names:
-            self.__image_names.append(file_name)
-            self.__number_of_training_samples += 1
+        self.__number_of_training_samples = len(file_names)
+        self.__image_names = file_names
 
     def __defineLabels(self, labels_file_path):
-        all_labels = pd.read_csv(labels_file_path)["isup_grade"]
+        all_labels = pd.read_csv(labels_file_path)["isup_grade"].values.tolist()
         if self.__train_valid_split is None:
             self.__labels = all_labels
         else:
-            if self.__train_valid_split < 0:
-                self.__labels = all_labels[self.__sample_split_index:]
-            else:
+            if self.__train_valid_split > 0:
                 self.__labels = all_labels[:self.__sample_split_index]
+            else:
+                self.__labels = all_labels[self.__sample_split_index:]
 
     def __createSquarePatches(self, batch):
         batch = list(np.moveaxis(np.array(batch), 0, 1))
@@ -171,6 +189,12 @@ class DataGenerator:
             concat_batch.append(cv2.vconcat(hconcat_patches))
         return np.array(concat_batch)
 
+    def __readPngImages(self):
+        images = []
+        for i in self.__latest_used_indices:
+            images.append(np.array(Image.open(self.__image_names[i])))
+        return np.array(images)
+
     def getImageGeneratorAndNames(
             self, normalize=False, shuffle=True):
         self.__shuffle = shuffle
@@ -181,15 +205,17 @@ class DataGenerator:
             # Read images
             image_names = [
                 self.__image_names[i] for i in self.__latest_used_indices]
-            images = np.moveaxis(np.array([
-                self.__cropPatches(os.path.join(
-                    self.__data_directory, self.__image_names[i]))
-                for i in self.__latest_used_indices]), 0, 1)
-            if normalize:
-                images = self.normalizeArray(np.array(images))
-            images = list(images)
-            if self.__concatenate_patches:
-                images = self.__createSquarePatches(images)
+            if image_names[0].split('.')[-1] == "tiff":
+                images = self.__cropPatchesFromImages()
+                if normalize:
+                    images = self.normalizeArray(np.array(images))
+                images = list(images)
+                if self.__concatenate_patches:
+                    images = self.__createSquarePatches(images)
+            else:
+                images = self.__readPngImages()
+                if normalize:
+                    images = self.normalizeArray(images)
             yield images, image_names
 
     def normalizeArray(self, data_array, max_value=255):
