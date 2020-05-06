@@ -13,19 +13,20 @@ from openslide import OpenSlide
 class DataGenerator:
     def __init__(
             self, data_directory, batch_size, patch_size, patches_per_image=1,
-            concatenate_patches=False):
+            concatenate_patches=False, normalize=False, shuffle=True):
         self.__available_indices = []
-        self.__latest_used_indices = []
+        self.__batch_size = batch_size
+        self.__concatenate_patches = concatenate_patches
+        self.__data_directory = data_directory
+        self.__data_stored_into_folders = None
         self.__image_names = []
+        self.__labels = None
+        self.__latest_used_indices = []
+        self.__normalize = normalize
         self.__number_of_data_samples = None
         self.__patch_size = patch_size
-        self.__batch_size = batch_size
-        self.__shuffle = None
         self.__patches_per_image = patches_per_image
-        self.__data_directory = data_directory
-        self.__labels = None
-        self.__concatenate_patches = concatenate_patches
-        self.__data_stored_into_folders = None
+        self.__shuffle = shuffle
 
         self.__defineFileNames()
 
@@ -156,7 +157,7 @@ class DataGenerator:
         return tf.keras.utils.to_categorical(y_batch, number_of_classes)
 
     def __createSquarePatches(self, batch):
-        batch = list(np.moveaxis(np.array(batch), 0, 1))
+        batch = list(np.moveaxis(batch, 0, 1))
         patches_per_row = int(math.sqrt(self.__patches_per_image))
         concat_batch = []
         for patches in batch:
@@ -173,10 +174,7 @@ class DataGenerator:
             images.append(np.array(Image.open(self.__image_names[i])))
         return np.array(images)
 
-    def getImageGeneratorAndNames(
-            self, normalize=False, shuffle=True):
-        self.__shuffle = shuffle
-
+    def getImageGeneratorAndNames(self):
         while True:
             self.__pickIndices()
 
@@ -185,15 +183,12 @@ class DataGenerator:
                 self.__image_names[i] for i in self.__latest_used_indices]
             if image_names[0].split('.')[-1] == "tiff":
                 images = self.__cropPatchesFromImages()
-                if normalize:
-                    images = self.normalizeArray(np.array(images))
-                images = list(images)
                 if self.__concatenate_patches:
                     images = self.__createSquarePatches(images)
             else:
                 images = self.__readPngImages()
-                if normalize:
-                    images = self.normalizeArray(images)
+            if self.__normalize:
+                images = self.normalizeArray(images)
             yield images, image_names
 
     def normalizeArray(self, data_array, max_value=255):
@@ -209,12 +204,11 @@ class DataGenerator:
         return math.ceil(self.__number_of_data_samples / self.__batch_size)
 
     def trainImagesAndLabels(
-            self, labels_file_path=None, normalize=False, shuffle=True,
-            number_of_classes=6):
+            self, labels_file_path=None, number_of_classes=6):
         if not self.__data_stored_into_folders:
             self.__labels = pd.read_csv(
                 labels_file_path)["isup_grade"].values.tolist()
-        batch_generator = self.getImageGeneratorAndNames(normalize, shuffle)
+        batch_generator = self.getImageGeneratorAndNames()
 
         while True:
             X_batch, image_names = next(batch_generator)

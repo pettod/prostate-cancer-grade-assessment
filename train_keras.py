@@ -69,15 +69,13 @@ def train():
     # Load data generators
     train_generator = DataGenerator(
         TRAIN_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        concatenate_patches=CONCATENATE_PATCHES)
-    train_batch_generator = train_generator.trainImagesAndLabels(
-        TRAIN_Y_DIR, normalize=True)
+        concatenate_patches=CONCATENATE_PATCHES, normalize=True)
+    train_batch_generator = train_generator.trainImagesAndLabels(TRAIN_Y_DIR)
     number_of_train_batches = train_generator.numberOfBatchesPerEpoch()
     valid_generator = DataGenerator(
         VALID_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        concatenate_patches=CONCATENATE_PATCHES)
-    valid_batch_generator = valid_generator.trainImagesAndLabels(
-        VALID_Y_DIR, normalize=True)
+        concatenate_patches=CONCATENATE_PATCHES, normalize=True)
+    valid_batch_generator = valid_generator.trainImagesAndLabels(VALID_Y_DIR)
     number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch()
 
     # Define callbacks
