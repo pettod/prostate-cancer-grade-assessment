@@ -61,18 +61,30 @@ def getETA(start_time, number_of_images, id_index, sample_index):
 
 
 def main():
+    # Cannot allow to save images into one folder if taking multiple samples
+    # per image
+    if NUMBER_OF_SAMPLES_PER_IMAGE > 1 and not SPLIT_IMAGES_INTO_CLASS_FOLDERS:
+        raise ValueError((
+            "NUMBER_OF_SAMPLES_PER_IMAGE={} must be 1 if " +
+            "SPLIT_IMAGES_INTO_CLASS_FOLDERS=False").format(
+                NUMBER_OF_SAMPLES_PER_IMAGE))
+
+    # Load data generator
     test_generator = DataGenerator(
         TRAIN_X_DIR, 1, PATCH_SIZE, PATCHES_PER_IMAGE,
         concatenate_patches=CONCATENATE_PATCHES)
     test_batch_generator = test_generator.getImageGeneratorAndNames(
         normalize=False, shuffle=False)
     number_of_images = test_generator.numberOfBatchesPerEpoch()
+
+    # Create new folders
     os.makedirs(SAVE_DIR)
     if SPLIT_IMAGES_INTO_CLASS_FOLDERS:
         for i in range(6):
             os.makedirs(os.path.join(SAVE_DIR, str(i)))
     csv_file = pd.read_csv(TRAIN_Y_DIR)
 
+    # Save batch images N times
     start_time = time.time()
     for sample_index in range(NUMBER_OF_SAMPLES_PER_IMAGE):
         for id_index in range(number_of_images):
