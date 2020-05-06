@@ -4,6 +4,7 @@ from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
 
 import glob
+import math
 import numpy as np
 import os
 import pandas as pd
@@ -27,7 +28,6 @@ LOAD_MODEL = False
 BATCH_SIZE = 16
 PATCH_SIZE = 64
 PATCHES_PER_IMAGE = 16
-INPUT_SHAPE = (PATCH_SIZE*4, PATCH_SIZE*4, 3)
 EPOCHS = 1000
 PATIENCE = 10
 LEARNING_RATE = 1e-4
@@ -46,7 +46,11 @@ def loadModel(load_pretrained_model=True, model_root="models"):
             })
         print("Loaded model: {}".format(latest_model))
     else:
-        model = net(INPUT_SHAPE, PATCHES_PER_IMAGE)
+        input_shape = (PATCH_SIZE, PATCH_SIZE, 3)
+        if CONCATENATE_PATCHES:
+            input_side = PATCH_SIZE * int(math.sqrt(PATCHES_PER_IMAGE))
+            input_shape = (input_side, input_side, 3)
+        model = net(input_shape, PATCHES_PER_IMAGE)
 
         # Compile model
         model.compile(
