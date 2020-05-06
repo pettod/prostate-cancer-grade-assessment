@@ -1,29 +1,16 @@
 # Libraries
 from tensorflow.keras.models import load_model
-from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
-from tensorflow.keras.layers import \
-    Activation, Add, BatchNormalization, Conv2D, Input, Lambda, UpSampling2D, \
-    Reshape, concatenate, Conv2DTranspose, Dense, Flatten
-from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import \
-    CSVLogger, EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 import glob
 import time
 import numpy as np
-import math
-import random
 import pandas as pd
 import os
-import cv2
-from openslide import OpenSlide
 from sklearn.metrics import accuracy_score, cohen_kappa_score
 
 # Project files
 from src.image_generator import DataGenerator
-from src.utils import getNumberOfSteps
 
 
 # Data paths
@@ -56,9 +43,8 @@ def test():
     model = loadModel()
     train_generator = DataGenerator(
         TRAIN_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-        concatenate_patches=CONCATENATE_PATCHES)
-    train_batch_generator = train_generator.trainImagesAndLabels(
-        TRAIN_Y_DIR, normalize=True, shuffle=False)
+        concatenate_patches=CONCATENATE_PATCHES, normalize=True, shuffle=False)
+    train_batch_generator = train_generator.trainImagesAndLabels(TRAIN_Y_DIR)
     number_of_train_batches = train_generator.numberOfBatchesPerEpoch()
 
     # Get image names and predictions
@@ -78,12 +64,6 @@ def test():
     kappa = cohen_kappa_score(y_preds, y_trues)
     print("Kappa: {}. Accuracy: {}. Number of images: {}".format(
         kappa, accuracy, len(y_preds)))
-    # Validation data
-    #valid_images = 1062
-    #accuracy = accuracy_score(y_preds[-valid_images:], y_trues[-valid_images:])
-    #kappa = cohen_kappa_score(y_preds[-valid_images:], y_trues[-valid_images:])
-    #print("Kappa: {}. Accuracy: {}. Number of images: {}".format(
-    #    kappa, accuracy, len(y_preds[-valid_images:])))
 
 
 def main():
