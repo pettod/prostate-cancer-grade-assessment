@@ -24,7 +24,6 @@ class DataGenerator:
         self.__labels = None
         self.__latest_used_indices = []
         self.__normalize = normalize
-        self.__number_of_data_samples = None
         self.__patch_size = patch_size
         self.__patches_per_image = patches_per_image
         self.__rotate = rotate
@@ -36,7 +35,7 @@ class DataGenerator:
         # Define indices
         if len(self.__available_indices) == 0:
             self.__available_indices = list(
-                np.arange(0, self.__number_of_data_samples))
+                np.arange(0, self.__image_names.shape[0]))
         if self.__batch_size < len(self.__available_indices):
             if self.__shuffle:
                 random_indices_from_list = random.sample(
@@ -138,15 +137,13 @@ class DataGenerator:
             self.__data_directory, '*')))
 
         # Data has been stored into class folders
-        if len(file_names[0].split('.')) == 1:
+        if len(file_names) > 0 and len(file_names[0].split('.')) == 1:
             self.__data_stored_into_folders = True
             file_names = sorted(glob.glob(os.path.join(
                 self.__data_directory, *['*', '*'])))
         else:
             self.__data_stored_into_folders = False
         self.__image_names = np.array(file_names)
-
-        self.__number_of_data_samples = self.__image_names.shape[0]
 
     def __getLabels(self, number_of_classes):
         if self.__data_stored_into_folders:
@@ -212,7 +209,7 @@ class DataGenerator:
         return data_array.astype(np.uint8)
 
     def numberOfBatchesPerEpoch(self):
-        return math.ceil(self.__number_of_data_samples / self.__batch_size)
+        return math.ceil(self.__image_names.shape[0] / self.__batch_size)
 
     def trainImagesAndLabels(
             self, labels_file_path=None, number_of_classes=6):
