@@ -3,7 +3,6 @@ import math
 import random
 import pandas as pd
 import os
-import tensorflow as tf
 import glob
 import cv2
 from PIL import Image
@@ -146,14 +145,17 @@ class DataGenerator:
         self.__image_names = np.array(file_names)
 
     def __getLabels(self, number_of_classes):
+        # Get label integers
         if self.__data_stored_into_folders:
-            y_batch = np.array([
-                self.__image_names[i].split('/')[-2]
-                for i in self.__latest_used_indices])
+            y_batch = [
+                int(self.__image_names[i].split('/')[-2])
+                for i in self.__latest_used_indices]
         else:
-            y_batch = np.array(
-                [self.__labels[i] for i in self.__latest_used_indices])
-        return tf.keras.utils.to_categorical(y_batch, number_of_classes)
+            y_batch = [self.__labels[i] for i in self.__latest_used_indices]
+
+        # Transform integers to categorical
+        return np.array(
+            [np.eye(number_of_classes)[i] for i in y_batch], dtype=np.float32)
 
     def __createSquarePatches(self, batch):
         batch = list(np.moveaxis(batch, 0, 1))
