@@ -30,55 +30,17 @@ class DataGenerator:
 
         self.__readDatasetFileNames()
 
-    def __pickBatchIndices(self):
-        # Define indices
-        if len(self.__available_indices) == 0:
-            self.__available_indices = list(
-                np.arange(0, self.__image_names.shape[0]))
-        if self.__batch_size < len(self.__available_indices):
-            if self.__shuffle:
-                random_indices_from_list = random.sample(
-                    range(len(self.__available_indices)), self.__batch_size)
-                self.__latest_used_indices = []
-                for i in random_indices_from_list:
-                    self.__latest_used_indices.append(
-                        self.__available_indices[i])
-            else:
-                self.__latest_used_indices = self.__available_indices[
-                    :self.__batch_size].copy()
-        else:
-            self.__latest_used_indices = self.__available_indices.copy()
-
-        # Remove indices from availabe indices
-        for i in reversed(sorted(self.__latest_used_indices)):
-            self.__available_indices.remove(i)
-
-    def __getCellCoordinatesFromImage(
-            self, image_slide, resolution_relation, image_shape):
-
-        # Read low resolution image (3 images resolutions)
-        low_resolution_image = np.array(image_slide.read_region((
-            0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
-
-        # Find pixels which have cell / exclude white pixels
-        # Take center of the cell coordinate by subtracting 0.5*patch_size
-        cell_coordinates = np.array(np.where(np.mean(
-            low_resolution_image, axis=-1) < 200)) - \
-            int(self.__patch_size / 2 / resolution_relation)
-        cell_coordinates[cell_coordinates < 0] = 0
-
-        # If image includes only white areas or very white, generate random
-        # coordinates
-        if cell_coordinates.shape[1] == 0:
-            random_coordinates = []
-            for i in range(100):
-                random_x = random.randint(
-                    0, image_shape[0] - self.__patch_size - 1)
-                random_y = random.randint(
-                    0, image_shape[1] - self.__patch_size - 1)
-                random_coordinates.append([random_y, random_x])
-            cell_coordinates = np.transpose(np.array(random_coordinates))
-        return cell_coordinates
+    def __concatenateTilePatches(self, batch):
+        batch = list(np.moveaxis(batch, 0, 1))
+        patches_per_row = int(math.sqrt(self.__patches_per_image))
+        concat_batch = []
+        for patches in batch:
+            hconcat_patches = []
+            for i in range(patches_per_row):
+                hconcat_patches.append(cv2.hconcat(patches[:patches_per_row]))
+                patches = patches[patches_per_row:]
+            concat_batch.append(cv2.vconcat(hconcat_patches))
+        return np.array(concat_batch)
 
     def __cropPatchesFromImage(self, image_name, downsample_level=0):
         # downsample_level : 0, 1, 2
@@ -131,20 +93,7 @@ class DataGenerator:
             images.append(self.__cropPatchesFromImage(self.__image_names[i]))
         return np.moveaxis(np.array(images), 0, 1)
 
-    def __readDatasetFileNames(self):
-        file_names = sorted(glob.glob(os.path.join(
-            self.__data_directory, '*')))
-
-        # Data has been stored into class folders
-        if len(file_names) > 0 and len(file_names[0].split('.')) == 1:
-            self.__data_stored_into_folders = True
-            file_names = sorted(glob.glob(os.path.join(
-                self.__data_directory, *['*', '*'])))
-        else:
-            self.__data_stored_into_folders = False
-        self.__image_names = np.array(file_names)
-
-    def __getLabels(self, number_of_classes):
+    def __getBatchLabels(self, number_of_classes):
         # Get label integers
         if self.__data_stored_into_folders:
             y_batch = [
@@ -157,17 +106,68 @@ class DataGenerator:
         return np.array(
             [np.eye(number_of_classes)[i] for i in y_batch], dtype=np.float32)
 
-    def __concatenateTilePatches(self, batch):
-        batch = list(np.moveaxis(batch, 0, 1))
-        patches_per_row = int(math.sqrt(self.__patches_per_image))
-        concat_batch = []
-        for patches in batch:
-            hconcat_patches = []
-            for i in range(patches_per_row):
-                hconcat_patches.append(cv2.hconcat(patches[:patches_per_row]))
-                patches = patches[patches_per_row:]
-            concat_batch.append(cv2.vconcat(hconcat_patches))
-        return np.array(concat_batch)
+    def __getCellCoordinatesFromImage(
+            self, image_slide, resolution_relation, image_shape):
+
+        # Read low resolution image (3 images resolutions)
+        low_resolution_image = np.array(image_slide.read_region((
+            0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
+
+        # Find pixels which have cell / exclude white pixels
+        # Take center of the cell coordinate by subtracting 0.5*patch_size
+        cell_coordinates = np.array(np.where(np.mean(
+            low_resolution_image, axis=-1) < 200)) - \
+            int(self.__patch_size / 2 / resolution_relation)
+        cell_coordinates[cell_coordinates < 0] = 0
+
+        # If image includes only white areas or very white, generate random
+        # coordinates
+        if cell_coordinates.shape[1] == 0:
+            random_coordinates = []
+            for i in range(100):
+                random_x = random.randint(
+                    0, image_shape[0] - self.__patch_size - 1)
+                random_y = random.randint(
+                    0, image_shape[1] - self.__patch_size - 1)
+                random_coordinates.append([random_y, random_x])
+            cell_coordinates = np.transpose(np.array(random_coordinates))
+        return cell_coordinates
+
+    def __pickBatchIndices(self):
+        # Define indices
+        if len(self.__available_indices) == 0:
+            self.__available_indices = list(
+                np.arange(0, self.__image_names.shape[0]))
+        if self.__batch_size < len(self.__available_indices):
+            if self.__shuffle:
+                random_indices_from_list = random.sample(
+                    range(len(self.__available_indices)), self.__batch_size)
+                self.__latest_used_indices = []
+                for i in random_indices_from_list:
+                    self.__latest_used_indices.append(
+                        self.__available_indices[i])
+            else:
+                self.__latest_used_indices = self.__available_indices[
+                    :self.__batch_size].copy()
+        else:
+            self.__latest_used_indices = self.__available_indices.copy()
+
+        # Remove indices from availabe indices
+        for i in reversed(sorted(self.__latest_used_indices)):
+            self.__available_indices.remove(i)
+
+    def __readDatasetFileNames(self):
+        file_names = sorted(glob.glob(os.path.join(
+            self.__data_directory, '*')))
+
+        # Data has been stored into class folders
+        if len(file_names) > 0 and len(file_names[0].split('.')) == 1:
+            self.__data_stored_into_folders = True
+            file_names = sorted(glob.glob(os.path.join(
+                self.__data_directory, *['*', '*'])))
+        else:
+            self.__data_stored_into_folders = False
+        self.__image_names = np.array(file_names)
 
     def __readSavedTilePatches(self):
         images = []
@@ -222,5 +222,5 @@ class DataGenerator:
 
         while True:
             X_batch, image_names = next(batch_generator)
-            y_batch = self.__getLabels(number_of_classes)
+            y_batch = self.__getBatchLabels(number_of_classes)
             yield X_batch, y_batch
