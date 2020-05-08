@@ -175,11 +175,11 @@ class DataGenerator:
             images.append(np.array(Image.open(self.__image_names[i])))
         return np.array(images)
 
-    def __rotateBatchImages(self, images):
+    def __rotateBatchImages(self, batch):
         rotated_images = []
-        for i in range(images.shape[0]):
+        for i in range(batch.shape[0]):
             random_angle = random.randint(0, 3)
-            rotated_images.append(np.rot90(images[i], random_angle))
+            rotated_images.append(np.rot90(batch[i], random_angle))
         return np.array(rotated_images)
 
     def getImageGeneratorAndNames(self):
@@ -201,18 +201,6 @@ class DataGenerator:
                 images = self.normalizeArray(images)
             yield images, image_names
 
-    def normalizeArray(self, data_array, max_value=255):
-        return ((data_array / max_value - 0.5) * 2).astype(np.float32)
-
-    def unnormalizeArray(self, data_array, max_value=255):
-        data_array = (data_array / 2 + 0.5) * max_value
-        data_array[data_array < 0.0] = 0.0
-        data_array[data_array > max_value] = max_value
-        return data_array.astype(np.uint8)
-
-    def numberOfBatchesPerEpoch(self):
-        return math.ceil(self.__image_names.shape[0] / self.__batch_size)
-
     def trainImagesAndLabels(
             self, labels_file_path=None, number_of_classes=6):
         if not self.__data_stored_into_folders:
@@ -224,3 +212,15 @@ class DataGenerator:
             X_batch, image_names = next(batch_generator)
             y_batch = self.__getBatchLabels(number_of_classes)
             yield X_batch, y_batch
+
+    def numberOfBatchesPerEpoch(self):
+        return math.ceil(self.__image_names.shape[0] / self.__batch_size)
+
+    def normalizeArray(self, data_array, max_value=255):
+        return ((data_array / max_value - 0.5) * 2).astype(np.float32)
+
+    def unnormalizeArray(self, data_array, max_value=255):
+        data_array = (data_array / 2 + 0.5) * max_value
+        data_array[data_array < 0.0] = 0.0
+        data_array[data_array > max_value] = max_value
+        return data_array.astype(np.uint8)
