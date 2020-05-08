@@ -28,9 +28,9 @@ class DataGenerator:
         self.__rotate = rotate
         self.__shuffle = shuffle
 
-        self.__defineFileNames()
+        self.__readDatasetFileNames()
 
-    def __pickIndices(self):
+    def __pickBatchIndices(self):
         # Define indices
         if len(self.__available_indices) == 0:
             self.__available_indices = list(
@@ -131,7 +131,7 @@ class DataGenerator:
             images.append(self.__cropPatchesFromImage(self.__image_names[i]))
         return np.moveaxis(np.array(images), 0, 1)
 
-    def __defineFileNames(self):
+    def __readDatasetFileNames(self):
         file_names = sorted(glob.glob(os.path.join(
             self.__data_directory, '*')))
 
@@ -157,7 +157,7 @@ class DataGenerator:
         return np.array(
             [np.eye(number_of_classes)[i] for i in y_batch], dtype=np.float32)
 
-    def __createSquarePatches(self, batch):
+    def __concatenateTilePatches(self, batch):
         batch = list(np.moveaxis(batch, 0, 1))
         patches_per_row = int(math.sqrt(self.__patches_per_image))
         concat_batch = []
@@ -169,7 +169,7 @@ class DataGenerator:
             concat_batch.append(cv2.vconcat(hconcat_patches))
         return np.array(concat_batch)
 
-    def __readPngImages(self):
+    def __readSavedTilePatches(self):
         images = []
         for i in self.__latest_used_indices:
             images.append(np.array(Image.open(self.__image_names[i])))
@@ -184,7 +184,7 @@ class DataGenerator:
 
     def getImageGeneratorAndNames(self):
         while True:
-            self.__pickIndices()
+            self.__pickBatchIndices()
 
             # Read images
             image_names = [
@@ -192,9 +192,9 @@ class DataGenerator:
             if image_names[0].split('.')[-1] == "tiff":
                 images = self.__cropPatchesFromImages()
                 if self.__concatenate_patches:
-                    images = self.__createSquarePatches(images)
+                    images = self.__concatenateTilePatches(images)
             else:
-                images = self.__readPngImages()
+                images = self.__readSavedTilePatches()
             if self.__rotate:
                 images = self.__rotateBatchImages(images)
             if self.__normalize:
