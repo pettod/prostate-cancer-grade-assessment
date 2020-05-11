@@ -4,9 +4,7 @@ Kaggle competition: Prostate cANcer graDe Assessment (PANDA) Challenge <https://
 
 ## Installation
 
-During the development, Python 3.6 was used. Setup the project with the following 5 steps. There are commands on how to do the installation on Ubuntu (please be aware what they will do).
-
-1. Install [Openslide](https://openslide.org/download/)
+During the development, Python 3.6 was used. Setup the project with the following 4 steps. There are commands on how to do the installation on Ubuntu (please be aware what they will do).
 
 1. Install Python libraries
 
@@ -17,8 +15,6 @@ During the development, Python 3.6 was used. Setup the project with the followin
 1. Extract dataset
 
 ```shell
-sudo apt-get install openslide-tools
-apt-get install python3-openslide
 pip install -e .
 kaggle competitions download -c prostate-cancer-grade-assessment
 mv prostate-cancer-grade-assessment.zip ../input/
