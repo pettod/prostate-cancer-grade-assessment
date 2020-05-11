@@ -5,8 +5,8 @@ import pandas as pd
 import os
 import glob
 import cv2
+from skimage.io import MultiImage
 from PIL import Image
-from openslide import OpenSlide
 
 
 class DataGenerator:
@@ -42,19 +42,18 @@ class DataGenerator:
             concat_batch.append(cv2.vconcat(hconcat_patches))
         return np.array(concat_batch)
 
-    def __cropPatchesFromImage(self, image_name, downsample_level=0):
-        # downsample_level : 0, 1, 2
-        # NOTE: only level 0 seems to work currently, other levels crop white
-        # areas
-        image_slide = OpenSlide(image_name)
-
+    def __cropPatchesFromImage(self, image_name, downsample_level=2):
+        # downsample_level: 0, 1, 2
         # Resolution downsample levels: 1, 4, 16
+        multi_image = MultiImage(image_name)
+        image_to_crop = multi_image[downsample_level]
+        image_shape = image_to_crop.shape
         resolution_relation = 4 ** (2 - downsample_level)
-        image_shape = image_slide.level_dimensions[downsample_level]
+        patch_shape = (self.__patch_size, self.__patch_size)
 
         # Find coordinates from where to select patch
         cell_coordinates = self.__getCellCoordinatesFromImage(
-            image_slide, resolution_relation, image_shape)
+            multi_image, resolution_relation, image_shape)
 
         # Crop patches
         patches = []
@@ -68,17 +67,21 @@ class DataGenerator:
                 # between low-resolution image and high/mid-resolution
                 start_y, start_x = \
                     cell_coordinates[:, random_index] * resolution_relation
-                start_x = min(
-                    start_x, image_shape[0] - self.__patch_size - 1)
-                start_y = min(
-                    start_y, image_shape[1] - self.__patch_size - 1)
+                start_x = max(0, min(
+                    start_x, image_shape[1] - self.__patch_size))
+                start_y = max(0, min(
+                    start_y, image_shape[0] - self.__patch_size))
                 end_x, end_y = np.array(
                     [start_x, start_y]) + self.__patch_size
 
                 # Crop from mid/high resolution image
-                patch = np.array(image_slide.read_region((
-                    start_x, start_y), downsample_level,
-                    (self.__patch_size, self.__patch_size)))[..., :3]
+                patch = image_to_crop[start_y:end_y, start_x:end_x]
+
+                # Resize if original image size was smaller than patch_size
+                if patch.shape[:2] != patch_shape:
+                    patch = cv2.resize(
+                        patch, dsize=patch_shape,
+                        interpolation=cv2.INTER_CUBIC)
 
                 # Patch has enough colored areas (not pure white) or has been
                 # iterated more than 5 times
@@ -107,11 +110,10 @@ class DataGenerator:
             [np.eye(number_of_classes)[i] for i in y_batch], dtype=np.float32)
 
     def __getCellCoordinatesFromImage(
-            self, image_slide, resolution_relation, image_shape):
+            self, multi_image, resolution_relation, image_shape):
 
         # Read low resolution image (3 images resolutions)
-        low_resolution_image = np.array(image_slide.read_region((
-            0, 0), 2, image_slide.level_dimensions[2]))[..., :3]
+        low_resolution_image = multi_image[-1]
 
         # Find pixels which have cell / exclude white pixels
         # Take center of the cell coordinate by subtracting 0.5*patch_size
