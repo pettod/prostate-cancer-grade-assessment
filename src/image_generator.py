@@ -12,11 +12,9 @@ from PIL import Image
 class DataGenerator:
     def __init__(
             self, data_directory, batch_size, patch_size, patches_per_image=1,
-            concatenate_patches=False, normalize=False, shuffle=True,
-            rotate=False):
+            normalize=False, shuffle=True, rotate=False):
         self.__available_indices = []
         self.__batch_size = batch_size
-        self.__concatenate_patches = concatenate_patches
         self.__data_directory = data_directory
         self.__data_stored_into_folders = None
         self.__image_names = []
@@ -193,8 +191,7 @@ class DataGenerator:
                 self.__image_names[i] for i in self.__latest_used_indices]
             if image_names[0].split('.')[-1] == "tiff":
                 images = self.__cropPatchesFromImages()
-                if self.__concatenate_patches:
-                    images = self.__concatenateTilePatches(images)
+                images = self.__concatenateTilePatches(images)
             else:
                 images = self.__readSavedTilePatches()
             if self.__rotate:

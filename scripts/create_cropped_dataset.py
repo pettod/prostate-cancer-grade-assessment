@@ -19,7 +19,6 @@ SAVE_DIR = os.path.join(ROOT, PROGRAM_TIME_STAMP)
 # Batch details
 PATCH_SIZE = 64
 PATCHES_PER_IMAGE = 16
-CONCATENATE_PATCHES = True
 SPLIT_IMAGES_INTO_CLASS_FOLDERS = True
 
 NUMBER_OF_SAMPLES_PER_IMAGE = 10
@@ -71,8 +70,7 @@ def main():
 
     # Load data generator
     test_generator = DataGenerator(
-        TRAIN_X_DIR, 1, PATCH_SIZE, PATCHES_PER_IMAGE,
-        concatenate_patches=CONCATENATE_PATCHES, normalize=False,
+        TRAIN_X_DIR, 1, PATCH_SIZE, PATCHES_PER_IMAGE, normalize=False,
         shuffle=False)
     test_batch_generator = test_generator.getImageGeneratorAndNames()
     number_of_images = test_generator.numberOfBatchesPerEpoch()

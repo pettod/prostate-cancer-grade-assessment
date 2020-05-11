@@ -32,5 +32,5 @@ def get_model(
     return model
 
 
-def net(input_shape, patches_per_image=1):
+def net(input_shape):
     return get_model(InceptionResNetV2, 0, input_shape, dropout=None)
