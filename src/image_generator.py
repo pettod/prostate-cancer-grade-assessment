@@ -62,9 +62,12 @@ class DataGenerator:
                 random_index = random.randint(0, cell_coordinates.shape[1] - 1)
 
                 # Scale coordinates by the number of resolution relation
-                # between low-resolution image and high/mid-resolution
-                start_y, start_x = \
-                    cell_coordinates[:, random_index] * resolution_relation
+                # between low-resolution image and high/mid-resolution.
+                # Take center of the cell coordinate by subtracting
+                # 0.5*patch_size.
+                start_y, start_x = (
+                    cell_coordinates[:, random_index] * resolution_relation - 
+                    int(0.5 * self.__patch_size))
                 start_x = max(0, min(
                     start_x, image_shape[1] - self.__patch_size))
                 start_y = max(0, min(
@@ -122,11 +125,8 @@ class DataGenerator:
         image_shape = low_resolution_image.shape
 
         # Find pixels which have cell / exclude white pixels
-        # Take center of the cell coordinate by subtracting 0.5*patch_size
         cell_coordinates = np.array(np.where(np.mean(
-            low_resolution_image, axis=-1) < detection_threshold)) - \
-            int(self.__patch_size / 2 / resolution_relation)
-        cell_coordinates[cell_coordinates < 0] = 0
+            low_resolution_image, axis=-1) < detection_threshold))
 
         # If image includes only white areas or very white, generate random
         # coordinates
