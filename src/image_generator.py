@@ -51,7 +51,7 @@ class DataGenerator:
 
         # Find coordinates from where to select patch
         cell_coordinates = self.__getCellCoordinatesFromImage(
-            multi_image, resolution_relation, image_shape)
+            multi_image, resolution_relation)
 
         # Crop patches
         patches = []
@@ -113,15 +113,18 @@ class DataGenerator:
         return y_batch
 
     def __getCellCoordinatesFromImage(
-            self, multi_image, resolution_relation, image_shape):
+            self, multi_image, resolution_relation):
+        # Threshold of color value to define cell (0 to 255)
+        detection_threshold = 200
 
         # Read low resolution image (3 images resolutions)
         low_resolution_image = multi_image[-1]
+        image_shape = low_resolution_image.shape
 
         # Find pixels which have cell / exclude white pixels
         # Take center of the cell coordinate by subtracting 0.5*patch_size
         cell_coordinates = np.array(np.where(np.mean(
-            low_resolution_image, axis=-1) < 200)) - \
+            low_resolution_image, axis=-1) < detection_threshold)) - \
             int(self.__patch_size / 2 / resolution_relation)
         cell_coordinates[cell_coordinates < 0] = 0
 
@@ -131,9 +134,9 @@ class DataGenerator:
             random_coordinates = []
             for i in range(100):
                 random_x = random.randint(
-                    0, image_shape[0] - self.__patch_size - 1)
+                    0, image_shape[0] - self.__patch_size)
                 random_y = random.randint(
-                    0, image_shape[1] - self.__patch_size - 1)
+                    0, image_shape[1] - self.__patch_size)
                 random_coordinates.append([random_y, random_x])
             cell_coordinates = np.transpose(np.array(random_coordinates))
         return cell_coordinates
