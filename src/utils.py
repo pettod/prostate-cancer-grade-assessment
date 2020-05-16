@@ -17,16 +17,15 @@ def getCallbacks(patience, save_root, batch_size):
         os.makedirs(save_root)
 
     # Define callbacks
-    early_stopping = EarlyStopping(
-        monitor="val_quadraticKappa", mode="max", patience=patience)
+    early_stopping = EarlyStopping(patience=patience)
     checkpointer = ModelCheckpoint(
-        model_file_name, monitor="val_quadraticKappa", mode="max", verbose=1,
+        model_file_name, verbose=1,
         save_best_only=True, save_weights_only=False)
     reduce_learning_rate = ReduceLROnPlateau(
-        factor=0.3, patience=5, min_lr=1e-8)
+        factor=0.2, patience=3, min_lr=1e-8)
     csv_logger = CSVLogger(csv_log_file_name, separator=';')
     tensor_board = TensorBoard(
-        log_dir=save_root, write_graph=False, batch_size=batch_size)
+        log_dir=save_root, batch_size=batch_size)
     callbacks = [
         early_stopping,
         checkpointer,

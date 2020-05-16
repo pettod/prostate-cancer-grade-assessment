@@ -4,7 +4,7 @@ from tensorflow.keras.layers import \
     GlobalAveragePooling2D, Dropout, Concatenate, GlobalMaxPooling2D
 from tensorflow.keras.models import Model
 import tensorflow as tf
-from tensorflow.keras.applications import InceptionResNetV2
+from tensorflow.keras.applications import ResNet50
 import math
 
 
@@ -33,4 +33,4 @@ def get_model(
 
 
 def net(input_shape):
-    return get_model(InceptionResNetV2, 0, input_shape, dropout=None)
+    return get_model(ResNet50, 0, input_shape, dropout=None)
