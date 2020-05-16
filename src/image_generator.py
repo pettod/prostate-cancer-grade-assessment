@@ -56,9 +56,7 @@ class DataGenerator:
         # Crop patches
         patches = []
         for i in range(self.__patches_per_image):
-            j = 0
-            while True:
-                j += 1
+            for j in range(5):
                 random_index = random.randint(0, cell_coordinates.shape[1] - 1)
 
                 # Scale coordinates by the number of resolution relation
@@ -84,11 +82,11 @@ class DataGenerator:
                         patch, dsize=patch_shape,
                         interpolation=cv2.INTER_CUBIC)
 
-                # Patch has enough colored areas (not pure white) or has been
-                # iterated more than 5 times
-                if np.mean(patch) < 230 or j >= 5:
-                    patches.append(patch)
+                # Patch has enough colored areas (not pure white)
+                # Otherwise iterate again
+                if np.mean(patch) < 230:
                     break
+            patches.append(patch)
         return patches
 
     def __cropPatchesFromImages(self):
