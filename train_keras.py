@@ -24,7 +24,7 @@ VALID_X_DIR = os.path.join(ROOT, "valid_patches_256_4x4_low_res")
 VALID_Y_DIR = os.path.join(ROOT, "valid.csv")
 
 # Model parameters
-LOAD_MODEL = False
+LOAD_MODEL = True
 BATCH_SIZE = 32
 PATCH_SIZE = 64
 PATCHES_PER_IMAGE = 16
@@ -35,13 +35,14 @@ LEARNING_RATE = 1e-4
 PROGRAM_TIME_STAMP = time.strftime("%Y-%m-%d_%H%M%S")
 
 
-def loadModel(load_pretrained_model=True, model_root="models"):
+def loadModel(load_pretrained_model=True, model_root="models/keras"):
     if load_pretrained_model:
         latest_model = sorted(glob.glob(model_root + "/*/*.h5"))[-1]
         model = load_model(
             latest_model,
             custom_objects={
-                "tf": tf
+                "tf": tf,
+                "quadraticKappa": quadraticKappa,
             })
         print("Loaded model: {}".format(latest_model))
     else:
@@ -61,7 +62,7 @@ def loadModel(load_pretrained_model=True, model_root="models"):
 def train():
     # Load model
     model = loadModel(LOAD_MODEL)
-    save_root = "models/{}".format(PROGRAM_TIME_STAMP)
+    save_root = "models/keras/{}".format(PROGRAM_TIME_STAMP)
 
     # Load data generators
     train_generator = DataGenerator(
