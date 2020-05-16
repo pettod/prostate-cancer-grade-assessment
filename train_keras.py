@@ -11,9 +11,9 @@ import pandas as pd
 import time
 
 # Project files
+from src.keras.network import net
+from src.keras.utils import getCallbacks, quadraticKappa
 from src.image_generator import DataGenerator
-from src.network import net
-from src.utils import getCallbacks, quadraticKappa
 
 
 # Data paths
