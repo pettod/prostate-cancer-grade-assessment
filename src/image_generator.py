@@ -50,9 +50,11 @@ class DataGenerator:
         # process, Openslide did not work for low resolution image))
         # Resolution downsample levels: 1, 4, 16
         multi_image = MultiImage(image_name)
+        use_mixed_resolutions = False
         if downsample_level is None:
+            use_mixed_resolutions = True
             image_slide = OpenSlide(image_name)
-            low_resolution_image = multi_image[-1]
+            image_to_crop = multi_image[-1]
         else:
             image_to_crop = multi_image[downsample_level]
             image_shape = image_to_crop.shape
@@ -66,12 +68,11 @@ class DataGenerator:
         for i in range(self.__patches_per_image):
 
             # Choose mixed down sample level (low and high (not mid))
-            if downsample_level is None:
-                random_downsample_level = int(
+            if use_mixed_resolutions:
+                downsample_level = int(
                     i * 2 / self.__patches_per_image) * 2
-                image_shape = image_slide.level_dimensions[
-                    random_downsample_level]
-                resolution_relation = 4 ** (2 - random_downsample_level)
+                image_shape = image_slide.level_dimensions[downsample_level]
+                resolution_relation = 4 ** (2 - downsample_level)
 
             # Iterate good patch
             for j in range(5):
@@ -92,11 +93,11 @@ class DataGenerator:
                     [start_x, start_y]) + self.__patch_size
 
                 # Crop from mid/high resolution image
-                if downsample_level is None and random_downsample_level == 0:
+                if downsample_level == 0:
                     patch = np.array(image_slide.read_region((
                         start_x, start_y), 0, patch_shape))[..., :3]
                 else:
-                    patch = low_resolution_image[start_y:end_y, start_x:end_x]
+                    patch = image_to_crop[start_y:end_y, start_x:end_x]
 
                 # Resize if original image size was smaller than patch_size
                 if patch.shape[:2] != patch_shape:
