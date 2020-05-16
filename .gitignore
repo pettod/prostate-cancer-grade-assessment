@@ -11,4 +11,6 @@ models/*
 *.jpeg
 *.pyc
 *.h5
+*.pt
 *.csv
+*.json
