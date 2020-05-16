@@ -40,22 +40,34 @@ class DataGenerator:
             concat_batch.append(cv2.vconcat(hconcat_patches))
         return np.array(concat_batch)
 
-    def __cropPatchesFromImage(self, image_name, downsample_level=2):
-        # downsample_level: 0, 1, 2
-        # Resolution downsample levels: 1, 4, 16
-        multi_image = MultiImage(image_name)
-        image_to_crop = multi_image[downsample_level]
-        image_shape = image_to_crop.shape
-        resolution_relation = 4 ** (2 - downsample_level)
+    def __cropPatchesFromImage(self, image_name, downsample_level=None):
         patch_shape = (self.__patch_size, self.__patch_size)
 
+        # downsample_level: 0, 1, 2, None (random)
+        # Resolution downsample levels: 1, 4, 16
+        multi_image = MultiImage(image_name)
+        if downsample_level is None:
+            all_images = [multi_image[0], multi_image[1], multi_image[2]]
+        else:
+            image_to_crop = multi_image[downsample_level]
+            image_shape = image_to_crop.shape
+            resolution_relation = 4 ** (2 - downsample_level)
+
         # Find coordinates from where to select patch
-        cell_coordinates = self.__getCellCoordinatesFromImage(
-            multi_image, resolution_relation)
+        cell_coordinates = self.__getCellCoordinatesFromImage(multi_image)
 
         # Crop patches
         patches = []
         for i in range(self.__patches_per_image):
+
+            # Choose mixed down sample level (low and high (not mid))
+            if downsample_level is None:
+                random_downsample_level = (i % 2) * 2
+                image_to_crop = all_images[random_downsample_level]
+                image_shape = image_to_crop.shape
+                resolution_relation = 4 ** (2 - random_downsample_level)
+
+            # Iterate good patch
             for j in range(5):
                 random_index = random.randint(0, cell_coordinates.shape[1] - 1)
 
@@ -80,7 +92,7 @@ class DataGenerator:
                 if patch.shape[:2] != patch_shape:
                     patch = cv2.resize(
                         patch, dsize=patch_shape,
-                        interpolation=cv2.INTER_CUBIC)
+                        interpolation=cv2.INTER_LINEAR)
 
                 # Patch has enough colored areas (not pure white)
                 # Otherwise iterate again
@@ -113,8 +125,7 @@ class DataGenerator:
             y_batch = np.array(y_batch)
         return y_batch
 
-    def __getCellCoordinatesFromImage(
-            self, multi_image, resolution_relation):
+    def __getCellCoordinatesFromImage(self, multi_image):
         # Threshold of color value to define cell (0 to 255)
         detection_threshold = 200
 
