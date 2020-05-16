@@ -6,6 +6,7 @@ import os
 import glob
 import cv2
 from skimage.io import MultiImage
+from openslide import OpenSlide
 from PIL import Image
 
 
@@ -44,10 +45,14 @@ class DataGenerator:
         patch_shape = (self.__patch_size, self.__patch_size)
 
         # downsample_level: 0, 1, 2, None (random)
+        # Use only 2 or None (MultiImage is used for low resolution image,
+        # OpenSlide for high resolution image (to save memory and faster
+        # process, Openslide did not work for low resolution image))
         # Resolution downsample levels: 1, 4, 16
         multi_image = MultiImage(image_name)
         if downsample_level is None:
-            all_images = [multi_image[0], multi_image[1], multi_image[2]]
+            image_slide = OpenSlide(image_name)
+            low_resolution_image = multi_image[-1]
         else:
             image_to_crop = multi_image[downsample_level]
             image_shape = image_to_crop.shape
@@ -64,8 +69,8 @@ class DataGenerator:
             if downsample_level is None:
                 random_downsample_level = int(
                     i * 2 / self.__patches_per_image) * 2
-                image_to_crop = all_images[random_downsample_level]
-                image_shape = image_to_crop.shape
+                image_shape = image_slide.level_dimensions[
+                    random_downsample_level]
                 resolution_relation = 4 ** (2 - random_downsample_level)
 
             # Iterate good patch
@@ -80,14 +85,18 @@ class DataGenerator:
                     cell_coordinates[:, random_index] * resolution_relation - 
                     int(0.5 * self.__patch_size))
                 start_x = max(0, min(
-                    start_x, image_shape[1] - self.__patch_size))
+                    start_x, image_shape[0] - self.__patch_size))
                 start_y = max(0, min(
-                    start_y, image_shape[0] - self.__patch_size))
+                    start_y, image_shape[1] - self.__patch_size))
                 end_x, end_y = np.array(
                     [start_x, start_y]) + self.__patch_size
 
                 # Crop from mid/high resolution image
-                patch = image_to_crop[start_y:end_y, start_x:end_x]
+                if downsample_level is None and random_downsample_level == 0:
+                    patch = np.array(image_slide.read_region((
+                        start_x, start_y), 0, patch_shape))[..., :3]
+                else:
+                    patch = low_resolution_image[start_y:end_y, start_x:end_x]
 
                 # Resize if original image size was smaller than patch_size
                 if patch.shape[:2] != patch_shape:
