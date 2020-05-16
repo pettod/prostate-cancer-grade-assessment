@@ -10,7 +10,7 @@ During the development, Python 3.6 was used. Setup the project with the followin
 
 1. Download dataset
 
-1. Move dataset into folder: `../input/`. You can also put the dataset to another hard drive and just create symbolic link to it. The code will handle that.
+1. Move dataset into folder: `../input/`. You can also put the dataset to another hard drive and create symbolic link to it, add the symbolic link into `../input/`. The code will handle that.
 
 1. Extract dataset
 
@@ -30,4 +30,6 @@ None of the following are required. Here is short a description what scripts the
 
 1. Create cropped data for faster data generation during the training time: `python scripts/create_cropped_dataset.py`
 
-1. Train: `python train_keras.py`
+1. Train Keras model: `python train_keras.py`
+
+1. Train Pytorch model: `python train_pytorch.py`
