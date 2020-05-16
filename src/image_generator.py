@@ -62,7 +62,8 @@ class DataGenerator:
 
             # Choose mixed down sample level (low and high (not mid))
             if downsample_level is None:
-                random_downsample_level = (i % 2) * 2
+                random_downsample_level = int(
+                    i * 2 / self.__patches_per_image) * 2
                 image_to_crop = all_images[random_downsample_level]
                 image_shape = image_to_crop.shape
                 resolution_relation = 4 ** (2 - random_downsample_level)
