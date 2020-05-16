@@ -57,7 +57,7 @@ class DataGenerator:
             image_to_crop = multi_image[-1]
         else:
             image_to_crop = multi_image[downsample_level]
-            image_shape = image_to_crop.shape
+            image_shape = tuple(image_to_crop.shape[::-1][1:])
             resolution_relation = 4 ** (2 - downsample_level)
 
         # Find coordinates from where to select patch
