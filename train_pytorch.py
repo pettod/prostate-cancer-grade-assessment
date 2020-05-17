@@ -34,6 +34,7 @@ PATCHES_PER_IMAGE = 16
 EPOCHS = 1000
 PATIENCE = 10
 LEARNING_RATE = 1e-4
+NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH = 10
 
 PROGRAM_TIME_STAMP = time.strftime("%Y-%m-%d_%H%M%S")
 
@@ -68,6 +69,11 @@ class Train():
         self.valid_batch_generator = valid_generator.trainImagesAndLabels(
             VALID_Y_DIR, categorical_labels=False)
         self.number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch()
+        self.validation_round_indices = np.linspace(
+            int(self.number_of_train_batches /
+            NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH),
+            self.number_of_train_batches - 2,
+            NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH, dtype=np.int)
 
     def loadModel(self):
         if LOAD_MODEL:
@@ -138,7 +144,7 @@ class Train():
             for i in progress_bar:
 
                 # Run validation data before last batch
-                if i == self.number_of_train_batches - 1:
+                if i in self.validation_round_indices:
                     self.current_epoch_metrics["epoch"] = epoch + 1
                     self.current_epoch_metrics["training_loss"] = epoch_loss
                     self.current_epoch_metrics["training_kappa"] = epoch_kappa
