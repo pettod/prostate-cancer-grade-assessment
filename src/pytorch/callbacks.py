@@ -1,6 +1,7 @@
-import numpy as np
 import torch
+import numpy as np
 import os
+import pandas as pd
 
 
 class EarlyStopping:
@@ -39,6 +40,8 @@ class EarlyStopping:
         elif score < self.best_score + self.delta:
             self.counter += 1
             print(f'EarlyStopping counter: {self.counter}/{self.patience}')
+            torch.save(model.state_dict(), "{}/model_last.pt".format(
+                self.save_directory))
             if self.counter >= self.patience:
                 self.early_stop = True
         else:
@@ -56,3 +59,20 @@ class EarlyStopping:
 
     def isEarlyStop(self):
         return self.early_stop
+
+
+class CsvLogger:
+    def __init__(self, save_model_directory):
+        self.logs_file_path = os.path.join(
+            save_model_directory, "logs.csv")
+
+    def __call__(self, loss_and_metrics):
+        # Create CSV file
+        new_data_frame = pd.DataFrame(loss_and_metrics, index=[0])
+        if not os.path.isfile(self.logs_file_path):
+            new_data_frame.to_csv(
+                self.logs_file_path, header=True, index=False)
+        else:
+            with open(self.logs_file_path, 'a') as old_data_frame:
+                new_data_frame.to_csv(
+                    old_data_frame, header=False, index=False)

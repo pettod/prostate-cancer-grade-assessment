@@ -13,27 +13,27 @@ import time
 from tqdm import tqdm, trange
 
 # Project files
-from src.pytorch.callbacks import EarlyStopping
+from src.pytorch.callbacks import EarlyStopping, CsvLogger
 from src.pytorch.network import Net
 from src.pytorch.utils import computeMetrics
 from src.image_generator import DataGenerator
 
 # Data paths
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
-TRAIN_X_DIR = os.path.join(ROOT, "train_patches_256_4x4_low_res")
+TRAIN_X_DIR = os.path.join(ROOT, "patches/train_256_4x4_mixed_res")
 TRAIN_Y_DIR = os.path.join(ROOT, "train.csv")
-VALID_X_DIR = os.path.join(ROOT, "valid_patches_256_4x4_low_res")
+VALID_X_DIR = os.path.join(ROOT, "patches/valid_256_4x4_mixed_res")
 VALID_Y_DIR = os.path.join(ROOT, "valid.csv")
 
 # Model parameters
-LOAD_MODEL = True
+LOAD_MODEL = False
 MODEL_PATH = None
 BATCH_SIZE = 32
 PATCH_SIZE = 64
 PATCHES_PER_IMAGE = 16
 EPOCHS = 1000
 PATIENCE = 10
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 1e-4
 
 PROGRAM_TIME_STAMP = time.strftime("%Y-%m-%d_%H%M%S")
 
@@ -46,12 +46,14 @@ class Train():
         self.model = self.loadModel()
         save_model_directory = os.path.join(
             self.model_root, PROGRAM_TIME_STAMP)
-        self.early_stopping = EarlyStopping(save_model_directory, PATIENCE)
 
-        # Define optimizer
+        # Define optimizer and callbacks
         self.optimizer = optim.Adam(self.model.parameters(), lr=LEARNING_RATE)
         self.scheduler = ReduceLROnPlateau(
             self.optimizer, "min", 0.3, 3, min_lr=1e-8)
+        self.early_stopping = EarlyStopping(save_model_directory, PATIENCE)
+        self.csv_logger = CsvLogger(save_model_directory)
+        self.current_epoch_metrics = {}
 
         # Define train and validation batch generators
         train_generator = DataGenerator(
@@ -105,12 +107,18 @@ class Train():
             batch_kappa, batch_accuracy = computeMetrics(y, output)
             epoch_kappa += (batch_kappa - epoch_kappa) / (i+1)
             epoch_accuracy += (batch_accuracy - epoch_accuracy) / (i+1)
-            epoch_loss += (loss - epoch_loss) / (i+1)
+            epoch_loss += (loss.item() - epoch_loss) / (i+1)
         print((
-            "\n Validation loss: {:9.7f}. Kappa: {:4.3f}. " +
+            "\n\n Valid loss: {:9.7f}. Kappa: {:4.3f}. " +
             "Accuracy: {:4.3f}").format(
                 epoch_loss, epoch_kappa, epoch_accuracy))
-        self.early_stopping.__call__(epoch_loss.item(), self.model)
+        self.current_epoch_metrics["validation_loss"] = epoch_loss
+        self.current_epoch_metrics["validation_kappa"] = epoch_kappa
+        self.current_epoch_metrics["validation_accuracy"] = epoch_accuracy
+        self.current_epoch_metrics["learning_rate"] = \
+            self.optimizer.param_groups[0]["lr"]
+        self.csv_logger.__call__(self.current_epoch_metrics)
+        self.early_stopping.__call__(epoch_loss, self.model)
         self.scheduler.step(epoch_loss)
 
     def train(self):
@@ -131,6 +139,11 @@ class Train():
 
                 # Run validation data before last batch
                 if i == self.number_of_train_batches - 1:
+                    self.current_epoch_metrics["epoch"] = epoch + 1
+                    self.current_epoch_metrics["training_loss"] = epoch_loss
+                    self.current_epoch_metrics["training_kappa"] = epoch_kappa
+                    self.current_epoch_metrics["training_accuracy"] = \
+                        epoch_accuracy
                     with torch.no_grad():
                         self.runValidationData()
 
@@ -151,9 +164,9 @@ class Train():
                     batch_kappa, batch_accuracy = computeMetrics(y, output)
                     epoch_kappa += (batch_kappa - epoch_kappa) / (i+1)
                     epoch_accuracy += (batch_accuracy - epoch_accuracy) / (i+1)
-                    epoch_loss += (loss - epoch_loss) / (i+1)
+                    epoch_loss += (loss.item() - epoch_loss) / (i+1)
                     progress_bar.display(
-                        " Loss: {:9.7f}. Kappa: {:4.3f}. Accuracy: {:4.3f}".format(
+                        " Train loss: {:9.7f}. Kappa: {:4.3f}. Accuracy: {:4.3f}".format(
                             epoch_loss, epoch_kappa, epoch_accuracy), 1)
 
 
