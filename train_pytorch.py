@@ -1,8 +1,5 @@
 import torch
-import torchvision
-from torchvision import transforms, datasets
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
@@ -15,7 +12,7 @@ from tqdm import tqdm, trange
 # Project files
 from src.pytorch.callbacks import EarlyStopping, CsvLogger
 from src.pytorch.network import Net
-from src.pytorch.utils import computeMetrics
+from src.pytorch.utils import computeMetrics, computeLoss
 from src.image_generator import DataGenerator
 
 # Data paths
@@ -40,9 +37,8 @@ PROGRAM_TIME_STAMP = time.strftime("%Y-%m-%d_%H%M%S")
 
 
 class Train():
-    def __init__(self, device, loss_function):
+    def __init__(self, device):
         self.device = device
-        self.loss_function = loss_function
         self.model_root = "models/pytorch"
         self.model = self.loadModel()
         save_model_directory = os.path.join(
@@ -109,7 +105,7 @@ class Train():
             X = torch.from_numpy(np.moveaxis(X, -1, 1)).to(self.device)
             y = torch.tensor(y, dtype=torch.long).to(self.device)
             output = self.model(X)
-            loss = self.loss_function(output, y)
+            loss = computeLoss(output, y)
             batch_kappa, batch_accuracy = computeMetrics(y, output)
             epoch_kappa += (batch_kappa - epoch_kappa) / (i+1)
             epoch_accuracy += (batch_accuracy - epoch_accuracy) / (i+1)
@@ -156,12 +152,12 @@ class Train():
                 # Load tensor batch
                 X, y = next(self.train_batch_generator)
                 X = torch.tensor(np.moveaxis(X, -1, 1)).to(self.device)
-                y = torch.tensor(y, dtype=torch.long).to(self.device)
+                y = torch.tensor(y).to(self.device)
 
                 # Feed forward and backpropagation
                 self.model.zero_grad()
                 output = self.model(X)
-                loss = self.loss_function(output, y)
+                loss = computeLoss(output, y)
                 loss.backward()
                 self.optimizer.step()
 
@@ -181,7 +177,7 @@ def main():
     if not torch.cuda.is_available():
         print("WARNING: Running on CPU\n\n\n\n")
 
-    train = Train(device, nn.CrossEntropyLoss())
+    train = Train(device)
     train.train()
 
 
