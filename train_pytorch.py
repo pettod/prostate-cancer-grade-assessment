@@ -12,7 +12,7 @@ from tqdm import tqdm, trange
 # Project files
 from src.pytorch.callbacks import EarlyStopping, CsvLogger
 from src.pytorch.network import Net
-from src.pytorch.utils import computeMetrics, computeLoss
+from src.pytorch.utils import computeMetrics, computeLoss, plotLearningCurve
 from src.image_generator import DataGenerator
 
 # Data paths
@@ -68,7 +68,7 @@ class Train():
         self.validation_round_indices = np.linspace(
             int(self.number_of_train_batches /
             NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH),
-            self.number_of_train_batches - 2,
+            self.number_of_train_batches - 1,
             NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH, dtype=np.int)
 
     def loadModel(self):
@@ -94,7 +94,7 @@ class Train():
             sum(p.numel() for p in model.parameters() if p.requires_grad)))
         return model
 
-    def runValidationData(self):
+    def validationRound(self):
         epoch_loss = 0
         epoch_kappa = 0
         epoch_accuracy = 0
@@ -147,7 +147,7 @@ class Train():
                     self.current_epoch_metrics["training_accuracy"] = \
                         epoch_accuracy
                     with torch.no_grad():
-                        self.runValidationData()
+                        self.validationRound()
 
                 # Load tensor batch
                 X, y = next(self.train_batch_generator)
@@ -179,6 +179,7 @@ def main():
 
     train = Train(device)
     train.train()
+    plotLearningCurve()
 
 
 main()
