@@ -55,7 +55,7 @@ class Train():
         # Define train and validation batch generators
         train_generator = DataGenerator(
             TRAIN_X_DIR, BATCH_SIZE, PATCH_SIZE, PATCHES_PER_IMAGE,
-            normalize=True, rotate=True)
+            normalize=True, rotate=True, add_gaussian_blur=True)
         self.train_batch_generator = train_generator.trainImagesAndLabels(
             TRAIN_Y_DIR, categorical_labels=False)
         self.number_of_train_batches = train_generator.numberOfBatchesPerEpoch()

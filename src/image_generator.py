@@ -8,12 +8,14 @@ import cv2
 from skimage.io import MultiImage
 from openslide import OpenSlide
 from PIL import Image
-
+import matplotlib.pyplot as plt
 
 class DataGenerator:
     def __init__(
             self, data_directory, batch_size, patch_size, patches_per_image=1,
-            normalize=False, shuffle=True, rotate=False):
+            normalize=False, shuffle=True, rotate=False,
+            add_gaussian_blur=False):
+        self.__add_gaussian_blur = add_gaussian_blur
         self.__available_indices = []
         self.__batch_size = batch_size
         self.__data_directory = data_directory
@@ -27,7 +29,26 @@ class DataGenerator:
         self.__rotate = rotate
         self.__shuffle = shuffle
 
+        # Update this if statement if adding more augmentations
+        self.__add_augmentations = False
+        if self.__rotate or self.__add_gaussian_blur:
+            self.__add_augmentations = True
+
         self.__readDatasetFileNames()
+
+    def __addAugmentationForBatchImages(self, batch):
+        augmented_images = []
+        for i in range(batch.shape[0]):
+            image = batch[i]
+            if self.__rotate:
+                random_angle = random.randint(0, 3)
+                image = np.rot90(image, random_angle)
+            if self.__add_gaussian_blur and random.randint(0, 9):
+                kernel_size = random.randrange(3, 11, 2)
+                image = cv2.GaussianBlur(
+                    image, (kernel_size, kernel_size), cv2.BORDER_DEFAULT)
+            augmented_images.append(image)
+        return np.array(augmented_images)
 
     def __concatenateTilePatches(self, batch):
         batch = list(np.moveaxis(batch, 0, 1))
@@ -203,13 +224,6 @@ class DataGenerator:
             images.append(np.array(Image.open(self.__image_names[i])))
         return np.array(images)
 
-    def __rotateBatchImages(self, batch):
-        rotated_images = []
-        for i in range(batch.shape[0]):
-            random_angle = random.randint(0, 3)
-            rotated_images.append(np.rot90(batch[i], random_angle))
-        return np.array(rotated_images)
-
     def getImageGeneratorAndNames(self):
         while True:
             self.__pickBatchIndices()
@@ -222,8 +236,8 @@ class DataGenerator:
                 images = self.__concatenateTilePatches(images)
             else:
                 images = self.__readSavedTilePatches()
-            if self.__rotate:
-                images = self.__rotateBatchImages(images)
+            if self.__add_augmentations:
+                images = self.__addAugmentationForBatchImages(images)
             if self.__normalize:
                 images = self.normalizeArray(images)
             yield images, image_names
