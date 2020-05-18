@@ -122,9 +122,9 @@ class DataGenerator:
 
                 # Resize if original image size was smaller than patch_size
                 if patch.shape[:2] != patch_shape:
-                    patch = cv2.resize(
-                        patch, dsize=patch_shape,
-                        interpolation=cv2.INTER_LINEAR)
+                    padding = np.subtract(patch_shape, patch.shape[:2])
+                    padding = ([0, padding[0]], [0, padding[1]], [0, 0])
+                    patch = np.pad(patch, padding, constant_values=255)
 
                 # Patch has enough colored areas (not pure white)
                 # Otherwise iterate again
