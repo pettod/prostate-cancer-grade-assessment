@@ -66,7 +66,7 @@ class Train():
             VALID_Y_DIR, categorical_labels=False)
         self.number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch()
         self.validation_round_indices = np.linspace(
-            int(self.number_of_train_batches - 1 /
+            int((self.number_of_train_batches - 1) /
                 NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH),
             self.number_of_train_batches - 1,
             NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH, dtype=np.int)
