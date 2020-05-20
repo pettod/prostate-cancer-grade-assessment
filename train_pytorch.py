@@ -66,8 +66,8 @@ class Train():
             VALID_Y_DIR, categorical_labels=False)
         self.number_of_valid_batches = valid_generator.numberOfBatchesPerEpoch()
         self.validation_round_indices = np.linspace(
-            int(self.number_of_train_batches /
-            NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH),
+            int(self.number_of_train_batches - 1 /
+                NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH),
             self.number_of_train_batches - 1,
             NUMBER_OF_VALIDATION_ROUNDS_PER_EPOCH, dtype=np.int)
 
@@ -173,13 +173,18 @@ class Train():
 
 
 def main():
+    # Define cuda
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not torch.cuda.is_available():
         print("WARNING: Running on CPU\n\n\n\n")
 
+    # Train and plot learning curve
     train = Train(device)
-    train.train()
-    plotLearningCurve()
+    try:
+        train.train()
+        plotLearningCurve()
+    except KeyboardInterrupt:
+        plotLearningCurve()
 
 
 main()
