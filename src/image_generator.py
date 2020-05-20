@@ -10,16 +10,18 @@ from openslide import OpenSlide
 from PIL import Image
 import matplotlib.pyplot as plt
 
+
 class DataGenerator:
     def __init__(
             self, data_directory, batch_size, patch_size, patches_per_image=1,
-            normalize=False, shuffle=True, rotate=False,
+            normalize=False, drop_last_batch=False, shuffle=True, rotate=False,
             add_gaussian_blur=False):
         self.__add_gaussian_blur = add_gaussian_blur
         self.__available_indices = []
         self.__batch_size = batch_size
         self.__data_directory = data_directory
         self.__data_stored_into_folders = None
+        self.__drop_last_batch = drop_last_batch
         self.__image_names = []
         self.__labels = None
         self.__latest_used_indices = []
@@ -183,11 +185,17 @@ class DataGenerator:
         return cell_coordinates
 
     def __pickBatchIndices(self):
-        # Define indices
-        if len(self.__available_indices) == 0:
+        # Initialize all indices to be available
+        if len(self.__available_indices) == 0 or (
+                self.__drop_last_batch and
+                len(self.__available_indices) < self.__batch_size):
             self.__available_indices = list(
                 np.arange(0, self.__image_names.shape[0]))
+
+        # Take batch
         if self.__batch_size < len(self.__available_indices):
+
+            # Random images in batch
             if self.__shuffle:
                 random_indices_from_list = random.sample(
                     range(len(self.__available_indices)), self.__batch_size)
@@ -195,13 +203,17 @@ class DataGenerator:
                 for i in random_indices_from_list:
                     self.__latest_used_indices.append(
                         self.__available_indices[i])
+
+            # Batch images in alphabetical order
             else:
                 self.__latest_used_indices = self.__available_indices[
                     :self.__batch_size].copy()
+
+        # Take last batch
         else:
             self.__latest_used_indices = self.__available_indices.copy()
 
-        # Remove indices from availabe indices
+        # Remove used indices from availabe indices
         for i in reversed(sorted(self.__latest_used_indices)):
             self.__available_indices.remove(i)
 
@@ -257,7 +269,10 @@ class DataGenerator:
             yield X_batch, y_batch
 
     def numberOfBatchesPerEpoch(self):
-        return math.ceil(self.__image_names.shape[0] / self.__batch_size)
+        if self.__drop_last_batch:
+            return int(self.__image_names.shape[0] / self.__batch_size)
+        else:
+            return math.ceil(self.__image_names.shape[0] / self.__batch_size)
 
     def normalizeArray(self, data_array, max_value=255):
         return ((data_array / max_value - 0.5) * 2).astype(np.float32)
