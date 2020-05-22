@@ -8,10 +8,9 @@ import argparse
 
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
 TRAIN = os.path.join(ROOT, 'train_images')
-SAVE_DIR = os.path.join(ROOT, 'iafoss_train')
 sz = 128
 N = 16
-
+SAVE_DIR = os.path.join(ROOT, f'Iafoss-{N}-{sz}x{sz}')
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode',  type=str, choices=['original', 'concatenated'], default='original')
 args = parser.parse_args()
@@ -36,9 +35,9 @@ def tile(img):
 
 if not os.path.isdir(SAVE_DIR):
     os.makedirs(SAVE_DIR)
-names = [name for name in os.listdir(TRAIN)]
+names = [name[:-5] for name in os.listdir(TRAIN)]
 for name in tqdm(names):
-    img = skimage.io.MultiImage(os.path.join(TRAIN,name))[-1]
+    img = skimage.io.MultiImage(os.path.join(TRAIN,name+'.tiff'))[-1]
     tiles = tile(img)
     if(args.mode == 'concatenated'):
         concatenated_img = np.zeros((sz*4, sz*4, 3))
@@ -46,7 +45,7 @@ for name in tqdm(names):
             img,idx = t['img'],t['idx']
             concatenated_img[128*(i//4):128*(i//4 + 1), 128*(i%4):128*(i%4 + 1)] = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             #if read with PIL RGB turns into BGR
-        cv2.imwrite("{}.png".format(os.path.join(SAVE_DIR, name.split('.')[0])), concatenated_img)
+        cv2.imwrite("{}.png".format(os.path.join(SAVE_DIR, name)), concatenated_img)
     else:
         for t in tiles:
             img,idx = t['img'],t['idx']
