@@ -17,8 +17,8 @@ bs = 32
 nfolds = 4
 SEED = 2020
 N = 12 #number of tiles per image
-_N = 16 #total number of tiles per each image
-TRAIN = f'../input/prostate-cancer-grade-assessment/Iafoss-{_N}-{sz}x{sz}/'
+_N = 12 #total number of tiles per each image
+TRAIN = f'../input/prostate-cancer-grade-assessment/Iafoss-{_N}-{sz}x{sz}-original/'
 LABELS = '../input/prostate-cancer-grade-assessment/train.csv'
 
 def seed_everything(seed):
