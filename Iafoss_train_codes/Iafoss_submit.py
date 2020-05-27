@@ -103,7 +103,7 @@ if os.path.exists(DATA):
     names,preds = [],[]
 
     with torch.no_grad():
-        for x,y in dl:
+        for x,y in tqdm(dl):
             x = x.cuda()
             #dihedral TTA
             x = torch.stack([x,x.flip(-1),x.flip(-2),x.flip(-1,-2),
