@@ -9,12 +9,19 @@ import argparse
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
 TRAIN = os.path.join(ROOT, 'train_images')
 sz = 128
-N = 16
-SAVE_DIR = os.path.join(ROOT, f'Iafoss-{N}-{sz}x{sz}')
 parser = argparse.ArgumentParser()
+
 parser.add_argument('--mode',  type=str, choices=['original', 'concatenated'], default='original')
+parser.add_argument('--N',  type=int, default='12')
+parser.add_argument('--row_size',  type=int, default='4')
+
+
 args = parser.parse_args()
 
+N = args.N
+row_size = args.row_size
+
+SAVE_DIR = os.path.join(ROOT, f'Iafoss-{N}-{sz}x{sz}-{args.mode}')
 
 def tile(img):
     result = []
@@ -40,10 +47,10 @@ for name in tqdm(names):
     img = skimage.io.MultiImage(os.path.join(TRAIN,name+'.tiff'))[-1]
     tiles = tile(img)
     if(args.mode == 'concatenated'):
-        concatenated_img = np.zeros((sz*4, sz*4, 3))
+        concatenated_img = np.zeros((sz*N_a, sz*N_b, 3))
         for i, t in enumerate(tiles):
             img,idx = t['img'],t['idx']
-            concatenated_img[128*(i//4):128*(i//4 + 1), 128*(i%4):128*(i%4 + 1)] = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            concatenated_img[128*(i//N_b):128*(i//N_b + 1), 128*(i%N_b):128*(i%N_b + 1)] = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             #if read with PIL RGB turns into BGR
         cv2.imwrite("{}.png".format(os.path.join(SAVE_DIR, name)), concatenated_img)
     else:
