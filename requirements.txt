@@ -10,4 +10,4 @@ opencv-python==4.2.0.34
 tqdm==4.46.0
 scikit-learn==0.22.2.post1
 pylint==2.5.2
-openslide==1.1.1
+openslide-python==1.1.1

@@ -25,6 +25,8 @@ cd ../input/
 unzip prostate-cancer-grade-assessment.zip
 ```
 
+**Note**: If there are issues with installing openslide from requirements.txt, remove the line, then run `pip install -e .` and install openslide manually.
+
 ## Running the Code
 
 None of the following are required. Here is short a description what scripts the project has. Some of the constant values may needed to be changed in the beginning of the each file you run.
