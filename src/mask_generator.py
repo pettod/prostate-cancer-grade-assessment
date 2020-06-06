@@ -160,23 +160,24 @@ if __name__ == "__main__":
         TRAIN_Y_DIR, TRAIN_X_DIR, TRAIN_CSV_PATH, patch_size=256)
     dataloader = DataLoader(
         dataset, batch_size=1, shuffle=False, num_workers=1)
-    color_codes = [
-        (0, 0, 0),
-        (255, 0, 0),
-        (0, 255, 0),
-        (0, 0, 255),
-        (255, 255, 0),
-        (255, 0, 255)]
+    RADBOUD_COLOR_CODES = [
+        (0, 0, 0),        # Nothing
+        (153, 221, 255),  # Stroma
+        (0  , 153,  51),  # Healthy
+        (255, 153, 153),  # Gleason 3
+        (255,   0,   0),  # Gleason 4
+        (102,   0,   0)   # Gleason 5
+    ]
     for image_batch, mask_batch in dataloader:
         image = image_batch.numpy()[0]
         mask = mask_batch.numpy()[0, ..., 0]
         r = np.copy(mask)
         g = np.copy(mask)
         b = np.copy(mask)
-        for i in range(len(color_codes)):
-            r[r == i] = color_codes[i][0]
-            g[g == i] = color_codes[i][1]
-            b[b == i] = color_codes[i][2]
+        for i in range(len(RADBOUD_COLOR_CODES)):
+            r[r == i] = RADBOUD_COLOR_CODES[i][0]
+            g[g == i] = RADBOUD_COLOR_CODES[i][1]
+            b[b == i] = RADBOUD_COLOR_CODES[i][2]
         mask = cv2.merge((r, g, b))
         plt.imshow(cv2.hconcat([image, mask]))
         plt.draw()
