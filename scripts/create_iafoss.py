@@ -8,6 +8,7 @@ import argparse
 
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
 TRAIN = os.path.join(ROOT, 'train_images')
+MASKS = os.path.join(ROOT, "train_label_masks/")
 sz = 128
 parser = argparse.ArgumentParser()
 
@@ -21,39 +22,54 @@ args = parser.parse_args()
 N = args.N
 row_size = args.row_size
 
-SAVE_DIR = os.path.join(ROOT, f'Iafoss-{N}-{sz}x{sz}-{args.mode}')
+IMAGE_SAVE_DIR = os.path.join(ROOT, f'Iafoss-{N}-{sz}x{sz}-{args.mode}')
+MASK_SAVE_DIR = os.path.join(ROOT, f'Iafoss-{N}-{sz}x{sz}-{args.mode}-masks')
 
-def tile(img):
+def tile(img, mask):
     result = []
     shape = img.shape
     pad0,pad1 = (sz - shape[0]%sz)%sz, (sz - shape[1]%sz)%sz
     img = np.pad(img,[[pad0//2,pad0-pad0//2],[pad1//2,pad1-pad1//2],[0,0]],
                 constant_values=255)
+    mask = np.pad(mask,[[pad0//2,pad0-pad0//2],[pad1//2,pad1-pad1//2],[0,0]],
+                constant_values=0)
     img = img.reshape(img.shape[0]//sz,sz,img.shape[1]//sz,sz,3)
     img = img.transpose(0,2,1,3,4).reshape(-1,sz,sz,3)
+    mask = mask.reshape(mask.shape[0]//sz,sz,mask.shape[1]//sz,sz,3)
+    mask = mask.transpose(0,2,1,3,4).reshape(-1,sz,sz,3)
     if len(img) < N:
+        mask = np.pad(mask,[[0,N-len(img)],[0,0],[0,0],[0,0]],constant_values=0)
         img = np.pad(img,[[0,N-len(img)],[0,0],[0,0],[0,0]],constant_values=255)
     idxs = np.argsort(img.reshape(img.shape[0],-1).sum(-1))[:N]
     img = img[idxs]
+    mask = mask[idxs]
     for i in range(len(img)):
-        result.append({'img':img[i], 'idx':i})
+        result.append({'img':img[i], 'mask':mask[i], 'idx':i})
     return result
 
 
-if not os.path.isdir(SAVE_DIR):
-    os.makedirs(SAVE_DIR)
+if not os.path.isdir(IMAGE_SAVE_DIR):
+    os.makedirs(IMAGE_SAVE_DIR)
+if not os.path.isdir(MASK_SAVE_DIR):
+    os.makedirs(MASK_SAVE_DIR)
 names = [name[:-5] for name in os.listdir(TRAIN)]
 for name in tqdm(names):
+    mask_name = os.path.join(MASKS,name+'_mask.tiff')
+    if not os.path.exists(mask_name):
+        continue
     img = skimage.io.MultiImage(os.path.join(TRAIN,name+'.tiff'))[-1]
-    tiles = tile(img)
+    mask = skimage.io.MultiImage(mask_name)[-1]
+    tiles = tile(img, mask)
     if(args.mode == 'concatenated'):
         concatenated_img = np.zeros((sz*N_a, sz*N_b, 3))
         for i, t in enumerate(tiles):
-            img,idx = t['img'],t['idx']
+            img,mask,idx = t['img'],t['mask'],t['idx']
             concatenated_img[128*(i//N_b):128*(i//N_b + 1), 128*(i%N_b):128*(i%N_b + 1)] = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            #if read with PIL RGB turns into BGR
-        cv2.imwrite("{}.png".format(os.path.join(SAVE_DIR, name)), concatenated_img)
+            concatenated_mask[128*(i//4):128*(i//4 + 1), 128*(i%4):128*(i%4 + 1)] = cv2.cvtColor(mask, cv2.COLOR_RGB2GRAY)
+        cv2.imwrite("{}.png".format(os.path.join(IMAGE_SAVE_DIR, name)), concatenated_img)
+        cv2.imwrite("{}.png".format(os.path.join(MASK_SAVE_DIR, name)), concatenated_mask)
     else:
         for t in tiles:
-            img,idx = t['img'],t['idx']
-            cv2.imwrite(os.path.join(SAVE_DIR, f'{name}_{idx}.png'), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+            img,mask,idx = t['img'],t['mask'],t['idx']
+            cv2.imwrite(os.path.join(IMAGE_SAVE_DIR, f'{name}_{idx}.png'), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(os.path.join(MASK_SAVE_DIR, f'{name}_{idx}.png'), cv2.cvtColor(mask, cv2.COLOR_RGB2BGR))
