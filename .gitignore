@@ -14,3 +14,4 @@ models/*
 *.pt
 *.csv
 *.json
+*.pth
