@@ -5,9 +5,11 @@ from tqdm import tqdm
 import zipfile
 import numpy as np
 import argparse
+import pandas as pd
 
 ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
 TRAIN = os.path.join(ROOT, 'train_images')
+TRAIN_CSV_PATH = os.path.join(ROOT, "train.csv")
 MASKS = os.path.join(ROOT, "train_label_masks/")
 sz = 128
 parser = argparse.ArgumentParser()
@@ -52,10 +54,13 @@ if not os.path.isdir(IMAGE_SAVE_DIR):
     os.makedirs(IMAGE_SAVE_DIR)
 if not os.path.isdir(MASK_SAVE_DIR):
     os.makedirs(MASK_SAVE_DIR)
-names = [name[:-5] for name in os.listdir(TRAIN)]
+names = [name.replace(".tiff", "") for name in os.listdir(TRAIN)]
+train_csv = pd.read_csv(TRAIN_CSV_PATH)
 for name in tqdm(names):
     mask_name = os.path.join(MASKS,name+'_mask.tiff')
     if not os.path.exists(mask_name):
+        continue
+    if not train_csv.loc[train_csv["image_id"] == name]["data_provider"].values == "radboud":
         continue
     img = skimage.io.MultiImage(os.path.join(TRAIN,name+'.tiff'))[-1]
     mask = skimage.io.MultiImage(mask_name)[-1]
