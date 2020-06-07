@@ -9,9 +9,9 @@ from skimage.io import MultiImage
 from openslide import OpenSlide
 from PIL import Image
 import matplotlib.pyplot as plt
+from torch.utils.data import Dataset
 
-
-class DataGenerator:
+class DataGenerator(Dataset):
     def __init__(
             self, data_directory, batch_size, patch_size, patches_per_image=1,
             normalize=False, drop_last_batch=False, shuffle=True, rotate=False,
@@ -282,3 +282,16 @@ class DataGenerator:
         data_array[data_array < 0.0] = 0.0
         data_array[data_array > max_value] = max_value
         return data_array.astype(np.uint8)
+
+    def __len__(self):
+        return self.__image_names.shape[0]
+
+    def __getitem__(self, idx):
+        self.__latest_used_indices = [idx]
+        name = self.__image_names[idx]
+        image = self.__cropPatchesFromImages()
+        image = self.__concatenateTilePatches(image)
+        if self.__normalize:
+            image = self.normalizeArray(image)
+
+        return image, name
