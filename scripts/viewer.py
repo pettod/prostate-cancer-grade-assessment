@@ -11,18 +11,18 @@ TRAIN_LABEL_SEGMENTAION_MASKS = os.path.join(ROOT, 'train_label_masks')
 labels = []
 
 RADBOUD_COLOR_CODES = [
-    (0, 0, 0),        # Nothing
+    (  0,   0,   0),  # Nothing
     (153, 221, 255),  # Stroma
-    (0  , 153,  51),  # Healthy
-    (255, 153, 153),  # Gleason 3
-    (255,   0,   0),  # Gleason 4
-    (102,   0,   0)   # Gleason 5
+    (  0, 153,  51),  # Healthy
+    (255, 209,  26),  # Gleason 3
+    (255, 102,   0),  # Gleason 4
+    (255,   0,   0)   # Gleason 5
 ]
 
 KAROLINSKA_COLOR_CODES = [
-    (0, 0, 0),       # Nothing
-    (0  , 255,  0),  # Healthy
-    (255,   0, 0),   # Cancer
+    (  0,   0,   0),  # Nothing
+    (  0, 255,   0),  # Healthy
+    (255,   0,   0),  # Cancer
 ]
 
 
@@ -64,7 +64,7 @@ def getProstateByIndex(idx):
 
     img, mask = trim_image_to_mask_size(img, mask)
 
-    return img, colorCodeMask(mask, getClinicByIndex(idx))
+    return img, colorCodeMask(mask, idx)
 
 
 def getIsupGradeByIndex(idx):
@@ -107,20 +107,22 @@ def zoom(event, x, y, flags, data):
         (16*(x + x_min) - RANGE, 16*(y + y_min) - RANGE),
         0, (RANGE*2, RANGE*2)))
 
-    mask = colorCodeMask(mask, getClinicByIndex(idx))
+    mask = colorCodeMask(mask, idx)
 
+    alpha = 0.65
+    transparent_image = np.copy(mask)
     while True:
-        rgb_image = img[..., :3]
-        transparent_image = (rgb_image + mask) // 2
-        concat_image = cv2.hconcat([
-            rgb_image, mask, transparent_image])
+        bgr_image = cv2.cvtColor(img[..., :3], cv2.COLOR_RGB2BGR)
+        cv2.addWeighted(
+            bgr_image, alpha, mask, 1 - alpha, 0, transparent_image)
+        concat_image = cv2.hconcat([bgr_image, mask, transparent_image])
         cv2.imshow("Prostate_zoom", concat_image)
         if cv2.waitKey(25) & 0xFF == ord('q'):
             cv2.destroyWindow("Prostate_zoom")
-            break    
+            break
 
 
-def colorCodeMask(mask, clinic_name):
+def colorCodeMask(mask, idx):
     r = np.copy(mask)
     g = np.copy(mask)
     b = np.copy(mask)
@@ -137,24 +139,30 @@ def colorCodeMask(mask, clinic_name):
     return cv2.merge((b, g, r))
 
 
-readCSV()
+def main():
+    readCSV()
 
-idx = int(input("Input the image index: "))
-while idx != -1:
-    print("Index:      %s" % idx)
-    print("ISUP:       %s" % getIsupGradeByIndex(idx))
-    print("Image name: %s" % getImgNameByIndex(idx))
-    print("Clinic:     %s" % getClinicByIndex(idx))
-    print()
-    img, mask = getProstateByIndex(idx)
-    img, mask = trim_image_to_mask_size(img, mask)
-    while True:
-        concat_image = cv2.hconcat([img[..., :3], mask])
-        cv2.imshow("Prostate", concat_image)
-        cv2.setMouseCallback("Prostate", zoom, (idx, img.shape[1]))
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
-            break
-    cv2.destroyAllWindows()
-    # idx = int(input())
-    idx += 1
+    idx = 0 #int(input("Input the image index: "))
+    while idx != -1:
+        while getClinicByIndex(idx) != "radboud":
+            idx += 1
+        print("Index:      %s" % idx)
+        print("ISUP:       %s" % getIsupGradeByIndex(idx))
+        print("Image name: %s" % getImgNameByIndex(idx))
+        print("Clinic:     %s" % getClinicByIndex(idx))
+        print()
+        img, mask = getProstateByIndex(idx)
+        img, mask = trim_image_to_mask_size(img, mask)
+        while True:
+            bgr_image = cv2.cvtColor(img[..., :3], cv2.COLOR_RGB2BGR)
+            concat_image = cv2.hconcat([bgr_image, mask])
+            cv2.imshow("Prostate", concat_image)
+            cv2.setMouseCallback("Prostate", zoom, (idx, img.shape[1]))
+            if cv2.waitKey(25) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
+                break
+        cv2.destroyAllWindows()
+        idx += 1
+
+
+main()
