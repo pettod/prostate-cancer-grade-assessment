@@ -170,9 +170,9 @@ if __name__ == "__main__":
         "0": np.array(["0 Background",   np.array([  0,   0,   0])]),
         "1": np.array(["1 Stroma",       np.array([153, 221, 255])]),
         "2": np.array(["2 Healthy",      np.array([  0, 153,  51])]),
-        "3": np.array(["3 Gleason 3",    np.array([255, 153, 153])]),
-        "4": np.array(["4 Gleason 4",    np.array([255,   0,   0])]),
-        "5": np.array(["5 Gleason 5",    np.array([102,   0,   0])]),
+        "3": np.array(["3 Gleason 3",    np.array([255, 209,  26])]),
+        "4": np.array(["4 Gleason 4",    np.array([255, 102,   0])]),
+        "5": np.array(["5 Gleason 5",    np.array([255,   0,   0])]),
     }
 
     # Color bar details
