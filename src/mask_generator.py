@@ -151,35 +151,59 @@ class MaskGenerator(Dataset):
 
 
 if __name__ == "__main__":
+    from matplotlib import colors
+
     # Data paths
     ROOT = os.path.realpath("../input/prostate-cancer-grade-assessment")
     TRAIN_X_DIR = os.path.join(ROOT, "train_images")
     TRAIN_Y_DIR = os.path.join(ROOT, "train_label_masks")
     TRAIN_CSV_PATH = os.path.join(ROOT, "train.csv")
+
+    # Create Pytorch generator
     dataset = MaskGenerator(
         TRAIN_Y_DIR, TRAIN_X_DIR, TRAIN_CSV_PATH, patch_size=256)
     dataloader = DataLoader(
         dataset, batch_size=1, shuffle=False, num_workers=1)
-    RADBOUD_COLOR_CODES = [
-        (0, 0, 0),        # Nothing
-        (153, 221, 255),  # Stroma
-        (0  , 153,  51),  # Healthy
-        (255, 153, 153),  # Gleason 3
-        (255,   0,   0),  # Gleason 4
-        (102,   0,   0)   # Gleason 5
-    ]
+
+    # Radboud clinic colors
+    RADBOUD_COLOR_CODES = {
+        "0": np.array(["0 Background",   np.array([  0,   0,   0])]),
+        "1": np.array(["1 Stroma",       np.array([153, 221, 255])]),
+        "2": np.array(["2 Healthy",      np.array([  0, 153,  51])]),
+        "3": np.array(["3 Gleason 3",    np.array([255, 153, 153])]),
+        "4": np.array(["4 Gleason 4",    np.array([255,   0,   0])]),
+        "5": np.array(["5 Gleason 5",    np.array([102,   0,   0])]),
+    }
+
+    # Color bar details
+    cmap = colors.ListedColormap(
+        list(np.array(list(RADBOUD_COLOR_CODES.values()))[:, 1] / 255))
+    grades = list(np.arange(0, 13))
+    grades_descriptions = [""] * 13
+    grades_descriptions[1::2] = list(np.array(list(
+        RADBOUD_COLOR_CODES.values()))[:, 0])
+    norm = colors.BoundaryNorm(grades, cmap.N+1)
+
+    # Load batch
     for image_batch, mask_batch in dataloader:
         image = image_batch.numpy()[0]
         mask = mask_batch.numpy()[0, ..., 0]
+
+        # Colorize mask
         r = np.copy(mask)
         g = np.copy(mask)
         b = np.copy(mask)
         for i in range(len(RADBOUD_COLOR_CODES)):
-            r[r == i] = RADBOUD_COLOR_CODES[i][0]
-            g[g == i] = RADBOUD_COLOR_CODES[i][1]
-            b[b == i] = RADBOUD_COLOR_CODES[i][2]
+            r[r == i] = RADBOUD_COLOR_CODES[str(i)][1][0]
+            g[g == i] = RADBOUD_COLOR_CODES[str(i)][1][1]
+            b[b == i] = RADBOUD_COLOR_CODES[str(i)][1][2]
         mask = cv2.merge((r, g, b))
-        plt.imshow(cv2.hconcat([image, mask]))
+
+        # Plot mask and image
+        plotted_cell_mask = plt.imshow(
+            cv2.hconcat([image, mask]), cmap=cmap, norm=norm)
+        colorbar = plt.colorbar(plotted_cell_mask, cmap=cmap, ticks=grades)
+        colorbar.ax.set_yticklabels(grades_descriptions)
         plt.draw()
         plt.pause(2)
         plt.clf()
