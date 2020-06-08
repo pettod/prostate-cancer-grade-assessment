@@ -8,6 +8,7 @@ from csvlogger import *
 from mish_activation import *
 import warnings
 from sklearn.model_selection import StratifiedKFold
+import numpy as np
 warnings.filterwarnings("ignore")
 
 fastai.__version__
@@ -18,7 +19,8 @@ nfolds = 4
 SEED = 2020
 N = 12 #number of tiles per image
 _N = 12 #total number of tiles per each image
-TRAIN = f'../input/prostate-cancer-grade-assessment/Iafoss-{_N}-{sz}x{sz}-original/'
+TRAIN_IMAGE_PATH = f'../input/prostate-cancer-grade-assessment/Iafoss-{_N}-{sz}x{sz}-original-radboud/'
+TRAIN_MASK_PATH = f'../input/prostate-cancer-grade-assessment/Iafoss-{_N}-{sz}x{sz}-original-masks-radboud/'
 LABELS = '../input/prostate-cancer-grade-assessment/train.csv'
 
 def seed_everything(seed):
@@ -33,7 +35,7 @@ def seed_everything(seed):
 seed_everything(SEED)
 
 df = pd.read_csv(LABELS).set_index('image_id')
-files = set([p[:32] for p in os.listdir(TRAIN)])
+files = set([p[:32] for p in os.listdir(TRAIN_IMAGE_PATH)])
 df = df.loc[files]
 df = df.reset_index()
 splits = StratifiedKFold(n_splits=nfolds, random_state=SEED, shuffle=True)
@@ -51,10 +53,15 @@ def open_image(fn:PathOrStr, div:bool=True, convert_mode:str='RGB', cls:type=Ima
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning) # EXIF warning from TiffPlugin
         x = PIL.Image.open(fn).convert(convert_mode)
+        mask_fn = os.path.join(TRAIN_MASK_PATH, fn.name)
+        mask = np.array(PIL.Image.open(mask_fn).convert(convert_mode))[..., 0][..., np.newaxis]
+        image = np.array(x)
+        x = np.concatenate((mask, mask, mask), axis=-1)
+        
     if after_open: x = after_open(x)
     x = pil2tensor(x,np.float32)
-    if div: x.div_(255)
-    return cls(1.0-x) #invert image for zero padding
+    if div: x.div_(6)
+    return cls(x-0.5) #invert image for zero padding
 
 class MImage(ItemBase):
     def __init__(self, imgs):
@@ -97,7 +104,7 @@ class MImageItemList(ImageList):
         plt.tight_layout()
 
 def get_data(fold=0):
-    return (MImageItemList.from_df(df, path='.', folder=TRAIN, cols='image_id')
+    return (MImageItemList.from_df(df, path='.', folder=TRAIN_IMAGE_PATH, cols='image_id')
       .split_by_idx(df.index[df.split == fold].tolist())
       .label_from_df(cols=['isup_grade'])
       .transform(get_transforms(flip_vert=True,max_rotate=15),size=sz,padding_mode='zeros')
