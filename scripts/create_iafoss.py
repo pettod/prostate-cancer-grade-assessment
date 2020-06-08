@@ -66,10 +66,11 @@ for name in tqdm(names):
     mask = skimage.io.MultiImage(mask_name)[-1]
     tiles = tile(img, mask)
     if(args.mode == 'concatenated'):
-        concatenated_img = np.zeros((sz*N_a, sz*N_b, 3))
+        concatenated_img = np.zeros((sz*4, sz*4, 3))
+        concatenated_mask = np.zeros((sz*4, sz*4))
         for i, t in enumerate(tiles):
             img,mask,idx = t['img'],t['mask'],t['idx']
-            concatenated_img[128*(i//N_b):128*(i//N_b + 1), 128*(i%N_b):128*(i%N_b + 1)] = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            concatenated_img[128*(i//4):128*(i//4 + 1), 128*(i%4):128*(i%4 + 1)] = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             concatenated_mask[128*(i//4):128*(i//4 + 1), 128*(i%4):128*(i%4 + 1)] = cv2.cvtColor(mask, cv2.COLOR_RGB2GRAY)
         cv2.imwrite("{}.png".format(os.path.join(IMAGE_SAVE_DIR, name)), concatenated_img)
         cv2.imwrite("{}.png".format(os.path.join(MASK_SAVE_DIR, name)), concatenated_mask)
